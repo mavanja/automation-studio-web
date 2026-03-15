@@ -44,16 +44,25 @@ async function checkUrlTokens() {
     const accessToken = params.get('ext_token')
     const refreshToken = params.get('ext_refresh')
 
-    if (!accessToken) return
+    if (!accessToken || !refreshToken) return
 
     console.log('[AS] Auto-login from extension...')
 
-    const { data, error } = await supabase.auth.setSession({
+    // Try setSession first
+    let { data, error } = await supabase.auth.setSession({
       access_token: accessToken,
-      refresh_token: refreshToken || '',
+      refresh_token: refreshToken,
     })
 
-    console.log('[AS] setSession result:', { data: !!data?.session, error })
+    // If access token expired, try refresh
+    if (error && refreshToken) {
+      console.log('[AS] Access token expired, trying refresh...')
+      const refreshResult = await supabase.auth.refreshSession({ refresh_token: refreshToken })
+      data = refreshResult.data
+      error = refreshResult.error
+    }
+
+    console.log('[AS] Login result:', { success: !!data?.session, error: error?.message })
 
     // Clean URL
     window.history.replaceState({}, '', '/')
