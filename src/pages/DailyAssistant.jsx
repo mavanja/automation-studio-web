@@ -113,20 +113,16 @@ export default function DailyAssistant() {
     try {
       const EXT_ID = 'ehaendpolcffilhljadohefkgaaplfbg'
       if (chrome?.runtime?.sendMessage) {
-        chrome.runtime.sendMessage(EXT_ID, { type: 'FETCH_MANAGED_GROUPS' }, async (response) => {
-          if (response?.groups?.length) {
-            // Reload from Supabase (extension already saved them)
-            await new Promise(r => setTimeout(r, 1000))
-            const { data } = await supabase.from('fb_groups').select('*').eq('is_admin', true)
-            setGroups(data || [])
-          }
-          setRefreshing(false)
-        })
-      } else {
-        setRefreshing(false)
+        // Tell extension to open FB and fetch groups
+        chrome.runtime.sendMessage(EXT_ID, { type: 'FETCH_MANAGED_GROUPS' }, () => {})
+        // Wait for the extension to finish fetching and saving to Supabase
+        // Then reload from Supabase
+        await new Promise(r => setTimeout(r, 8000))
+        const { data } = await supabase.from('fb_groups').select('*').eq('is_admin', true)
+        setGroups(data || [])
       }
     } catch {
-      setRefreshing(false)
+      // ignore
     }
   }
 
