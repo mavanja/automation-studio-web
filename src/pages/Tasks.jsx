@@ -139,6 +139,7 @@ export default function Tasks() {
       url: taskUrl,
       taskType: extensionTaskType,
       subTaskType: subTaskType,
+      userName: fbUserName || fbUserId,
       focusOnFb: true,
       cursorTimeGapMin: 500,
       cursorTimeGapMax: 1000,

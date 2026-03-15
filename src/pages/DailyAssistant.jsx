@@ -205,6 +205,7 @@ export default function DailyAssistant() {
           url: taskUrl,
           taskType: step.taskType,
           subTaskType: step.subTaskType || step.taskName,
+          userName: profile?.fb_user_name || profile?.fb_user_id || '',
           focusOnFb: true, isDailyWizardTask: true,
           cursorTimeGapMin: 500, cursorTimeGapMax: 1000,
           task: { taskId, taskName: step.taskName, status: 'inprogress', maxRequest: Number(s.maxRequests), friendRequestSent: 0, processUrl: s.url, facebookUserName: profile?.fb_user_name || '', facebookUserId: profile?.fb_user_id || '', message },
