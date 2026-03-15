@@ -40,29 +40,24 @@ export function useAuth() {
 
 async function checkUrlTokens() {
   try {
-    // Check full URL for access_token (could be in hash or query)
-    const fullUrl = window.location.href
-    if (!fullUrl.includes('access_token=')) return
-
-    // Extract access_token from anywhere in the URL
-    const match = fullUrl.match(/access_token=([^&]+)/)
-    const refreshMatch = fullUrl.match(/refresh_token=([^&]+)/)
-
-    const accessToken = match?.[1]
-    const refreshToken = refreshMatch?.[1] || ''
+    const params = new URLSearchParams(window.location.search)
+    const accessToken = params.get('ext_token')
+    const refreshToken = params.get('ext_refresh')
 
     if (!accessToken) return
 
-    const { error } = await supabase.auth.setSession({
-      access_token: decodeURIComponent(accessToken),
-      refresh_token: decodeURIComponent(refreshToken),
+    console.log('[AS] Auto-login from extension...')
+
+    const { data, error } = await supabase.auth.setSession({
+      access_token: accessToken,
+      refresh_token: refreshToken || '',
     })
 
-    if (!error) {
-      // Clean URL - redirect to root
-      window.history.replaceState({}, '', '/')
-    }
+    console.log('[AS] setSession result:', { data: !!data?.session, error })
+
+    // Clean URL
+    window.history.replaceState({}, '', '/')
   } catch (err) {
-    console.error('Auto-login from extension failed:', err)
+    console.error('[AS] Auto-login failed:', err)
   }
 }
