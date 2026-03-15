@@ -133,6 +133,8 @@ export default function Tasks() {
       taskType: extensionTaskType,
       subTaskType: subTaskType,
       focusOnFb: true,
+      cursorTimeGapMin: 500,
+      cursorTimeGapMax: 1000,
       task: {
         taskId: task.task_id,
         taskName: task.task_name,
@@ -140,11 +142,15 @@ export default function Tasks() {
         maxRequest: task.max_request,
         friendRequestSent: task.friend_request_sent || 0,
         processUrl: task.process_url,
-        facebookUserName: task.message?.facebookUserName || '',
-        facebookUserId: task.message?.facebookUserId || '',
+        facebookUserName: '',
+        facebookUserId: '',
         userId: user?.id,
-        message: task.message || {},
-        messageTemplateId: task.message?.messageTemplateId || '',
+        message: {
+          ...(task.message || {}),
+          processUrl: task.process_url,
+          subTask: subTaskType,
+        },
+        messageTemplateId: '',
         accessToken: '',
       },
     }
