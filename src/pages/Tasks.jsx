@@ -128,8 +128,12 @@ export default function Tasks() {
     const extensionTaskType = TASK_TYPE_MAP[task.task_name] || task.task_name
     const subTaskType = SUB_TASK_MAP[task.task_name] || task.task_name
 
+    // Add ypwSource=t to URL so content script recognizes this as a task tab
+    const baseUrl = task.process_url || 'https://www.facebook.com'
+    const taskUrl = baseUrl + (baseUrl.includes('?') ? '&' : '?') + 'ypwSource=t'
+
     const taskData = {
-      url: task.process_url || 'https://www.facebook.com',
+      url: taskUrl,
       taskType: extensionTaskType,
       subTaskType: subTaskType,
       focusOnFb: true,

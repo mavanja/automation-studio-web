@@ -197,8 +197,11 @@ export default function DailyAssistant() {
           status: 'inprogress', friend_request_sent: 0, message,
         })
 
+        const baseUrl = s.url || 'https://www.facebook.com'
+        const taskUrl = baseUrl + (baseUrl.includes('?') ? '&' : '?') + 'ypwSource=t'
+
         const taskData = {
-          url: s.url || 'https://www.facebook.com',
+          url: taskUrl,
           taskType: step.taskType,
           subTaskType: step.subTaskType || step.taskName,
           focusOnFb: true, isDailyWizardTask: true,
