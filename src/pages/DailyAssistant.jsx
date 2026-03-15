@@ -106,6 +106,30 @@ export default function DailyAssistant() {
     setTemplates(t.data || [])
   }
 
+  const [refreshing, setRefreshing] = useState(false)
+
+  async function refreshGroups() {
+    setRefreshing(true)
+    try {
+      const EXT_ID = 'ehaendpolcffilhljadohefkgaaplfbg'
+      if (chrome?.runtime?.sendMessage) {
+        chrome.runtime.sendMessage(EXT_ID, { type: 'FETCH_MANAGED_GROUPS' }, async (response) => {
+          if (response?.groups?.length) {
+            // Reload from Supabase (extension already saved them)
+            await new Promise(r => setTimeout(r, 1000))
+            const { data } = await supabase.from('fb_groups').select('*').eq('is_admin', true)
+            setGroups(data || [])
+          }
+          setRefreshing(false)
+        })
+      } else {
+        setRefreshing(false)
+      }
+    } catch {
+      setRefreshing(false)
+    }
+  }
+
   function toggleStep(id) {
     if (running) return
     setSteps(prev => prev.map(s => s.id === id ? { ...s, enabled: !s.enabled } : s))
@@ -270,7 +294,7 @@ export default function DailyAssistant() {
                 {step.enabled && step.showSettings && step.status === 'waiting' && (
                   <div className="border-t border-[#e2e5f0] bg-white/60 rounded-b-[14px] p-5">
                     {step.settingsType === 'groups' && (
-                      <GroupSettings step={step} groups={groups} onChange={(k, v) => updateSetting(step.id, k, v)} />
+                      <GroupSettings step={step} groups={groups} onChange={(k, v) => updateSetting(step.id, k, v)} onRefreshGroups={refreshGroups} />
                     )}
                     {step.settingsType === 'content' && (
                       <ContentSettings step={step} onChange={(k, v) => updateSetting(step.id, k, v)} />
@@ -291,12 +315,19 @@ export default function DailyAssistant() {
 
 // ============ SETTINGS COMPONENTS ============
 
-function GroupSettings({ step, groups, onChange }) {
+function GroupSettings({ step, groups, onChange, onRefreshGroups }) {
   const s = step.settings
   return (
     <div className="space-y-4">
       <div>
-        <Label>{t('assistant.select_group')}</Label>
+        <div className="flex items-center justify-between mb-1.5">
+          <Label>{t('assistant.select_group')}</Label>
+          <button onClick={onRefreshGroups}
+            className="px-3 py-1 text-[10px] font-semibold bg-primary text-white rounded-lg hover:bg-primary-hover transition-colors flex items-center gap-1">
+            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round"><polyline points="23 4 23 10 17 10"/><path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"/></svg>
+            {t('assistant.refresh')}
+          </button>
+        </div>
         <select value={s.url} onChange={(e) => onChange('url', e.target.value)} className="input-field">
           <option value="">-- {t('assistant.select_group')} --</option>
           {groups.map(g => (

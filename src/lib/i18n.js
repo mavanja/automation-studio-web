@@ -209,6 +209,8 @@ const TRANSLATIONS = {
     'assistant.filter_likes': 'Likes',
     'assistant.filter_both': 'Beides',
     'assistant.max_messages': 'Max. Nachrichten',
+    'assistant.refresh': 'Aktualisieren',
+    'assistant.refresh_hint': 'Öffne Facebook in einem Tab und klicke dann Aktualisieren.',
     'common.yes': 'Ja',
     'common.no': 'Nein',
 
@@ -399,6 +401,8 @@ const TRANSLATIONS = {
     'assistant.filter_likes': 'Likes',
     'assistant.filter_both': 'Both',
     'assistant.max_messages': 'Max Messages',
+    'assistant.refresh': 'Refresh',
+    'assistant.refresh_hint': 'Open Facebook in a tab first, then click Refresh.',
     'common.yes': 'Yes',
     'common.no': 'No',
 
