@@ -4,6 +4,7 @@ import { useAuth } from './hooks/useAuth'
 import Sidebar from './components/Sidebar'
 import Login from './pages/Login'
 import Dashboard from './pages/Dashboard'
+import DailyAssistant from './pages/DailyAssistant'
 import Tasks from './pages/Tasks'
 import TaskDetail from './pages/TaskDetail'
 import Results from './pages/Results'
@@ -33,6 +34,7 @@ export default function App() {
       <main className="flex-1 ml-[260px] min-h-screen">
         <Routes>
           <Route path="/" element={<Dashboard />} />
+          <Route path="/assistant" element={<DailyAssistant />} />
           <Route path="/tasks" element={<Tasks />} />
           <Route path="/tasks/:taskId" element={<TaskDetail />} />
           <Route path="/results" element={<Results />} />
