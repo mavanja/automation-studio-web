@@ -1,0 +1,270 @@
+import React, { useState, useEffect } from 'react'
+import { Link } from 'react-router-dom'
+import { supabase } from '../lib/supabase'
+import PageHeader from '../components/PageHeader'
+
+const TASK_TYPES = [
+  { group: 'Lead Generation', options: [
+    { value: 'leads-from-groups', label: 'Leads from Groups' },
+    { value: 'leads-from-content', label: 'Leads from Content' },
+    { value: 'leads-from-peaple', label: 'Leads from People' },
+    { value: 'leads-from-suggestions', label: 'Leads from Suggestions' },
+  ]},
+  { group: 'Engagement', options: [
+    { value: 'contentToolsGainRaciprocity', label: 'Gain Reciprocity' },
+    { value: 'contentToolsProspectByPost', label: 'Prospect by Post' },
+    { value: 'contentToolsTagsForAttention', label: 'Tags for Attention' },
+  ]},
+  { group: 'Messaging', options: [
+    { value: 'broadcast-message', label: 'Broadcast Message' },
+  ]},
+  { group: 'Friend Management', options: [
+    { value: 'friends-sync', label: 'Sync Friends' },
+    { value: 'date-friended', label: 'Date Friended' },
+    { value: 'cancel-friend-request', label: 'Cancel Friend Request' },
+    { value: 'start-unfriending', label: 'Start Unfriending' },
+    { value: 'scan-friend-activity', label: 'Scan Friend Activity' },
+  ]},
+]
+
+const FILTERS = [
+  { key: 'all', label: 'All' },
+  { key: 'inprogress', label: 'In Progress' },
+  { key: 'completed', label: 'Completed' },
+  { key: 'stopped', label: 'Stopped' },
+]
+
+export default function Tasks() {
+  const [tasks, setTasks] = useState([])
+  const [filter, setFilter] = useState('all')
+  const [loading, setLoading] = useState(true)
+  const [showModal, setShowModal] = useState(false)
+  const [form, setForm] = useState({ task_name: '', process_url: '', max_request: 50, message: '' })
+  const [templates, setTemplates] = useState([])
+  const [saving, setSaving] = useState(false)
+
+  useEffect(() => { loadTasks() }, [])
+
+  async function loadTasks() {
+    setLoading(true)
+    const { data } = await supabase
+      .from('tasks')
+      .select('*')
+      .order('created_at', { ascending: false })
+    setTasks(data || [])
+    setLoading(false)
+  }
+
+  async function loadTemplates() {
+    const { data } = await supabase.from('message_templates').select('*')
+    setTemplates(data || [])
+  }
+
+  function openModal() {
+    loadTemplates()
+    setForm({ task_name: '', process_url: '', max_request: 50, message: '' })
+    setShowModal(true)
+  }
+
+  async function createTask(e) {
+    e.preventDefault()
+    setSaving(true)
+    const taskId = `${form.task_name}-${Date.now()}`
+    const { error } = await supabase.from('tasks').insert({
+      task_id: taskId,
+      task_name: form.task_name,
+      process_url: form.process_url,
+      max_request: Number(form.max_request),
+      message: form.message,
+      status: 'pending',
+      friend_request_sent: 0,
+    })
+    setSaving(false)
+    if (!error) {
+      setShowModal(false)
+      loadTasks()
+    }
+  }
+
+  async function updateStatus(taskId, status) {
+    await supabase.from('tasks').update({ status }).eq('task_id', taskId)
+    setTasks(prev => prev.map(t => t.task_id === taskId ? { ...t, status } : t))
+  }
+
+  async function deleteTask(taskId) {
+    if (!window.confirm('Delete this task and all its results?')) return
+    await supabase.from('task_results').delete().eq('task_id', taskId)
+    await supabase.from('tasks').delete().eq('task_id', taskId)
+    setTasks(prev => prev.filter(t => t.task_id !== taskId))
+  }
+
+  const filtered = filter === 'all' ? tasks : tasks.filter(t => t.status === filter)
+
+  if (loading) {
+    return <div className="flex items-center justify-center h-96"><div className="w-8 h-8 border-4 border-primary border-t-transparent rounded-full animate-spin" /></div>
+  }
+
+  return (
+    <>
+      <PageHeader title="Tasks">
+        <button onClick={openModal} className="px-4 py-2 bg-primary text-white text-sm font-semibold rounded-lg hover:bg-blue-700 transition-colors">
+          + New Task
+        </button>
+      </PageHeader>
+
+      <div className="p-7 space-y-5">
+        <div className="flex gap-2">
+          {FILTERS.map(f => (
+            <button
+              key={f.key}
+              onClick={() => setFilter(f.key)}
+              className={`px-4 py-2 text-xs font-semibold rounded-lg transition-colors ${
+                filter === f.key
+                  ? 'bg-primary text-white'
+                  : 'bg-white border border-[#e2e5f0] text-[#9196b0] hover:text-[#1a1d2e]'
+              }`}
+            >
+              {f.label}
+            </button>
+          ))}
+        </div>
+
+        <div className="bg-white border border-[#e2e5f0] rounded-[14px] shadow-sm overflow-hidden">
+          {filtered.length === 0 ? (
+            <div className="p-12 text-center text-[#9196b0] text-sm">No tasks found.</div>
+          ) : (
+            <table className="w-full">
+              <thead>
+                <tr className="bg-[#f4f6fb]">
+                  <th className="text-left px-4 py-3 text-[10px] text-[#9196b0] uppercase tracking-[0.8px] font-bold">Task</th>
+                  <th className="text-left px-4 py-3 text-[10px] text-[#9196b0] uppercase tracking-[0.8px] font-bold">URL</th>
+                  <th className="text-left px-4 py-3 text-[10px] text-[#9196b0] uppercase tracking-[0.8px] font-bold">Status</th>
+                  <th className="text-left px-4 py-3 text-[10px] text-[#9196b0] uppercase tracking-[0.8px] font-bold">Progress</th>
+                  <th className="text-left px-4 py-3 text-[10px] text-[#9196b0] uppercase tracking-[0.8px] font-bold">Created</th>
+                  <th className="text-left px-4 py-3 text-[10px] text-[#9196b0] uppercase tracking-[0.8px] font-bold">Actions</th>
+                </tr>
+              </thead>
+              <tbody>
+                {filtered.map(task => (
+                  <tr key={task.task_id} className="hover:bg-[rgba(24,119,242,0.03)] transition-colors border-t border-[#e2e5f0]">
+                    <td className="px-4 py-3.5">
+                      <Link to={`/tasks/${task.task_id}`} className="font-semibold text-sm text-[#1a1d2e] hover:text-primary">
+                        {task.task_name || task.task_id}
+                      </Link>
+                    </td>
+                    <td className="px-4 py-3.5 text-[11px] text-[#9196b0] max-w-[200px] truncate">{task.process_url || '-'}</td>
+                    <td className="px-4 py-3.5"><StatusBadge status={task.status} /></td>
+                    <td className="px-4 py-3.5 text-sm text-[#1a1d2e]">{task.friend_request_sent || 0} / {task.max_request || '-'}</td>
+                    <td className="px-4 py-3.5 text-sm text-[#9196b0]">{new Date(task.created_at).toLocaleDateString('de')}</td>
+                    <td className="px-4 py-3.5">
+                      <div className="flex gap-1.5">
+                        {task.status !== 'inprogress' && (
+                          <button onClick={() => updateStatus(task.task_id, 'inprogress')} className="px-2.5 py-1 text-[10px] font-semibold bg-blue-50 text-blue-600 rounded-md hover:bg-blue-100 transition-colors">
+                            Start
+                          </button>
+                        )}
+                        {task.status === 'inprogress' && (
+                          <button onClick={() => updateStatus(task.task_id, 'stopped')} className="px-2.5 py-1 text-[10px] font-semibold bg-amber-50 text-amber-600 rounded-md hover:bg-amber-100 transition-colors">
+                            Stop
+                          </button>
+                        )}
+                        <button onClick={() => deleteTask(task.task_id)} className="px-2.5 py-1 text-[10px] font-semibold bg-red-50 text-red-600 rounded-md hover:bg-red-100 transition-colors">
+                          Delete
+                        </button>
+                      </div>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          )}
+        </div>
+      </div>
+
+      {showModal && (
+        <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50" onClick={() => setShowModal(false)}>
+          <div className="bg-white rounded-2xl shadow-xl w-full max-w-lg p-6 space-y-5" onClick={e => e.stopPropagation()}>
+            <h3 className="text-lg font-bold text-[#1a1d2e]">New Task</h3>
+            <form onSubmit={createTask} className="space-y-4">
+              <div>
+                <label className="block text-xs font-semibold text-[#9196b0] uppercase tracking-wide mb-1.5">Task Type</label>
+                <select
+                  value={form.task_name}
+                  onChange={e => setForm({ ...form, task_name: e.target.value })}
+                  required
+                  className="w-full border border-[#e2e5f0] rounded-lg px-3 py-2.5 text-sm text-[#1a1d2e] focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary"
+                >
+                  <option value="">Select task type...</option>
+                  {TASK_TYPES.map(group => (
+                    <optgroup key={group.group} label={group.group}>
+                      {group.options.map(opt => (
+                        <option key={opt.value} value={opt.value}>{opt.label}</option>
+                      ))}
+                    </optgroup>
+                  ))}
+                </select>
+              </div>
+
+              <div>
+                <label className="block text-xs font-semibold text-[#9196b0] uppercase tracking-wide mb-1.5">Facebook URL</label>
+                <input
+                  type="url"
+                  value={form.process_url}
+                  onChange={e => setForm({ ...form, process_url: e.target.value })}
+                  placeholder="https://facebook.com/groups/..."
+                  className="w-full border border-[#e2e5f0] rounded-lg px-3 py-2.5 text-sm text-[#1a1d2e] focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary"
+                />
+              </div>
+
+              <div>
+                <label className="block text-xs font-semibold text-[#9196b0] uppercase tracking-wide mb-1.5">Max Requests</label>
+                <input
+                  type="number"
+                  min="1"
+                  max="5000"
+                  value={form.max_request}
+                  onChange={e => setForm({ ...form, max_request: e.target.value })}
+                  className="w-full border border-[#e2e5f0] rounded-lg px-3 py-2.5 text-sm text-[#1a1d2e] focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary"
+                />
+              </div>
+
+              <div>
+                <label className="block text-xs font-semibold text-[#9196b0] uppercase tracking-wide mb-1.5">Template (optional)</label>
+                <select
+                  value={form.message}
+                  onChange={e => setForm({ ...form, message: e.target.value })}
+                  className="w-full border border-[#e2e5f0] rounded-lg px-3 py-2.5 text-sm text-[#1a1d2e] focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary"
+                >
+                  <option value="">No template</option>
+                  {templates.map(t => (
+                    <option key={t.id} value={t.template_body}>{t.template_name}</option>
+                  ))}
+                </select>
+              </div>
+
+              <div className="flex justify-end gap-3 pt-2">
+                <button type="button" onClick={() => setShowModal(false)} className="px-4 py-2 text-sm font-semibold text-[#9196b0] hover:text-[#1a1d2e] transition-colors">
+                  Cancel
+                </button>
+                <button type="submit" disabled={saving} className="px-5 py-2 bg-primary text-white text-sm font-semibold rounded-lg hover:bg-blue-700 transition-colors disabled:opacity-50">
+                  {saving ? 'Creating...' : 'Create Task'}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+    </>
+  )
+}
+
+function StatusBadge({ status }) {
+  const styles = {
+    pending: 'bg-[#f1f3f9] text-[#9196b0]',
+    inprogress: 'bg-blue-50 text-blue-600',
+    completed: 'bg-emerald-50 text-emerald-600',
+    stopped: 'bg-amber-50 text-amber-600',
+    blocked: 'bg-red-50 text-red-600',
+  }
+  return <span className={`inline-flex items-center px-3 py-1 rounded-full text-[11px] font-semibold ${styles[status] || styles.pending}`}>{status}</span>
+}
