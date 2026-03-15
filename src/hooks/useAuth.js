@@ -7,10 +7,13 @@ export function useAuth() {
   const [loading, setLoading] = useState(true)
 
   useEffect(() => {
-    supabase.auth.getSession().then(({ data: { session: s } }) => {
-      setSession(s)
-      setUser(s?.user ?? null)
-      setLoading(false)
+    // Check if tokens were passed via URL hash (from extension)
+    checkUrlTokens().then(() => {
+      supabase.auth.getSession().then(({ data: { session: s } }) => {
+        setSession(s)
+        setUser(s?.user ?? null)
+        setLoading(false)
+      })
     })
 
     const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, s) => {
@@ -34,4 +37,34 @@ export function useAuth() {
   }
 
   return { user, session, loading, signIn, signOut }
+}
+
+async function checkUrlTokens() {
+  try {
+    const hash = window.location.hash
+    if (!hash.includes('access_token=')) return
+
+    // Parse tokens from hash: #/auth?access_token=...&refresh_token=...
+    const queryPart = hash.split('?')[1]
+    if (!queryPart) return
+
+    const params = new URLSearchParams(queryPart)
+    const accessToken = params.get('access_token')
+    const refreshToken = params.get('refresh_token')
+
+    if (!accessToken) return
+
+    // Set the session in Supabase
+    const { error } = await supabase.auth.setSession({
+      access_token: accessToken,
+      refresh_token: refreshToken || '',
+    })
+
+    if (!error) {
+      // Clean up the URL - remove tokens
+      window.location.hash = '#/'
+    }
+  } catch (err) {
+    console.error('Auto-login from extension failed:', err)
+  }
 }
