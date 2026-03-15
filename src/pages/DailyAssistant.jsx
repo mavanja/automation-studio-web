@@ -200,7 +200,14 @@ export default function DailyAssistant() {
           status: 'inprogress', friend_request_sent: 0, message,
         })
 
-        const baseUrl = s.url || 'https://www.facebook.com'
+        let groupId = ''
+        if (s.url?.includes('/groups/')) {
+          groupId = s.url.split('/groups/')[1]?.split('/')[0]?.split('?')[0] || ''
+        }
+        let baseUrl = s.url || 'https://www.facebook.com'
+        if (step.taskName === 'leads-from-groups' && groupId) {
+          baseUrl = `https://www.facebook.com/groups/${groupId}/members`
+        }
         const taskUrl = baseUrl + (baseUrl.includes('?') ? '&' : '?') + 'ypwSource=t'
 
         const taskData = {
@@ -210,7 +217,7 @@ export default function DailyAssistant() {
           userName: profile?.fb_user_name || profile?.fb_user_id || '',
           focusOnFb: true, isDailyWizardTask: true,
           cursorTimeGapMin: 500, cursorTimeGapMax: 1000,
-          task: { taskId, taskName: step.taskName, status: 'inprogress', maxRequest: Number(s.maxRequests), friendRequestSent: 0, processUrl: s.url, facebookUserName: profile?.fb_user_name || '', facebookUserId: profile?.fb_user_id || '', message },
+          task: { taskId, taskName: step.taskName, status: 'inprogress', maxRequest: Number(s.maxRequests), friendRequestSent: 0, processUrl: s.url, groupId, facebookUserName: profile?.fb_user_name || '', facebookUserId: profile?.fb_user_id || '', message: { ...message, groupId } },
         }
 
         try {

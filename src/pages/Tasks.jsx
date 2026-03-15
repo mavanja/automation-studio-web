@@ -131,8 +131,17 @@ export default function Tasks() {
     const fbUserName = profile?.fb_user_name || ''
     const fbUserId = profile?.fb_user_id || ''
 
-    // Add ypwSource=t to URL so content script recognizes this as a task tab
-    const baseUrl = task.process_url || 'https://www.facebook.com'
+    // Extract groupId from URL
+    let groupId = ''
+    if (task.process_url?.includes('/groups/')) {
+      groupId = task.process_url.split('/groups/')[1]?.split('/')[0]?.split('?')[0] || ''
+    }
+
+    // For group leads: navigate to members page, not group main page
+    let baseUrl = task.process_url || 'https://www.facebook.com'
+    if (task.task_name === 'leads-from-groups' && groupId) {
+      baseUrl = `https://www.facebook.com/groups/${groupId}/members`
+    }
     const taskUrl = baseUrl + (baseUrl.includes('?') ? '&' : '?') + 'ypwSource=t'
 
     const taskData = {
@@ -153,9 +162,11 @@ export default function Tasks() {
         facebookUserName: fbUserName,
         facebookUserId: fbUserId,
         userId: user?.id,
+        groupId: groupId,
         message: {
           ...(task.message || {}),
           processUrl: task.process_url,
+          groupId: groupId,
           subTask: subTaskType,
           country: '',
           gender: '',
