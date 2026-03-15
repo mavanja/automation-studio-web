@@ -1,7 +1,7 @@
 // Communication with the Chrome Extension
-// The extension ID will be detected automatically or set manually
+const DEFAULT_EXTENSION_ID = 'ppjgapkplgefadennimahopgbiphmlcp'
 
-let extensionId = null
+let extensionId = DEFAULT_EXTENSION_ID
 
 export function setExtensionId(id) {
   extensionId = id
