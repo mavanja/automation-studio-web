@@ -89,36 +89,79 @@ export default function Tasks() {
     }
   }
 
+  // Map task names to the taskType the extension content scripts expect
+  const TASK_TYPE_MAP = {
+    'leads-from-groups': 'GET_LEADS_API_EXTERNAL',
+    'leads-from-content': 'GET_LEADS_API_EXTERNAL',
+    'leads-from-peaple': 'GET_LEADS_API_EXTERNAL',
+    'leads-from-suggestions': 'GET_LEADS_API_EXTERNAL',
+    'broadcast-message': 'BROADCAST_MESSAGE_API_EXTERNAL',
+    'friends-sync': 'FRIENDS_SYNC_API_EXTERNAL',
+    'date-friended': 'DATE_FRIENDED_API_EXTERNAL',
+    'cancel-friend-request': 'CANCEL_FRIEND_REQUESTS_API_EXTERNAL',
+    'start-unfriending': 'UNFRIEND_FRIEND_API_EXTERNAL',
+    'scan-friend-activity': 'SCAN_FRIEND_ACTIVITY_API_EXTERNAL',
+    'contentToolsGainRaciprocity': 'GAIN_RECIPROCITY_API_EXTERNAL',
+    'contentToolsProspectByPost': 'PROSPECT_BY_POST_API_EXTERNAL',
+    'contentToolsTagsForAttention': 'TAGS_FOR_ATTENTION_API_EXTERNAL',
+  }
+
+  // Map task name to subTaskType for leads
+  const SUB_TASK_MAP = {
+    'leads-from-groups': 'GET_LEADS_FOR_GROUPS',
+    'leads-from-content': 'GET_LEADS_FOR_CONTENT',
+    'leads-from-peaple': 'GET_LEADS_FOR_PEOPLE',
+    'leads-from-suggestions': 'GET_LEADS_FOR_SUGGESTIONS',
+  }
+
   async function startTask(taskId) {
     const task = tasks.find(t => t.task_id === taskId)
     if (!task) return
+
+    const { data: { user } } = await supabase.auth.getUser()
 
     // Update status in DB
     await supabase.from('tasks').update({ status: 'inprogress' }).eq('task_id', taskId)
     setTasks(prev => prev.map(t => t.task_id === taskId ? { ...t, status: 'inprogress' } : t))
 
-    // Send command to extension to open Facebook tab
-    try {
-      const url = task.process_url
-        ? `${task.process_url}${task.process_url.includes('?') ? '&' : '?'}taskId=${taskId}&sendRequest=true&taskFor=${task.task_name}`
-        : `https://www.facebook.com/?taskId=${taskId}&sendRequest=true&taskFor=${task.task_name}`
+    // Build the task data structure that the extension expects
+    const extensionTaskType = TASK_TYPE_MAP[task.task_name] || task.task_name
+    const subTaskType = SUB_TASK_MAP[task.task_name] || task.task_name
 
+    const taskData = {
+      url: task.process_url || 'https://www.facebook.com',
+      taskType: extensionTaskType,
+      subTaskType: subTaskType,
+      focusOnFb: true,
+      task: {
+        taskId: task.task_id,
+        taskName: task.task_name,
+        status: 'inprogress',
+        maxRequest: task.max_request,
+        friendRequestSent: task.friend_request_sent || 0,
+        processUrl: task.process_url,
+        facebookUserName: task.message?.facebookUserName || '',
+        facebookUserId: task.message?.facebookUserId || '',
+        userId: user?.id,
+        message: task.message || {},
+        messageTemplateId: task.message?.messageTemplateId || '',
+        accessToken: '',
+      },
+    }
+
+    // Send command to extension
+    try {
+      const EXT_ID = 'ehaendpolcffilhljadohefkgaaplfbg'
       if (chrome?.runtime?.sendMessage) {
-        chrome.runtime.sendMessage(
-          'ehaendpolcffilhljadohefkgaaplfbg',
-          { type: 'CREATE_TAB', data: { url, taskType: task.task_name, taskId, focusOnFb: true } },
-          () => {}
-        )
+        chrome.runtime.sendMessage(EXT_ID, { type: 'CREATE_TAB', data: taskData }, () => {})
       } else {
         // Fallback: open URL directly
+        const url = `${task.process_url || 'https://www.facebook.com'}?taskId=${taskId}&sendRequest=true&taskFor=${task.task_name}`
         window.open(url, '_blank')
       }
     } catch (err) {
       console.error('Could not send to extension:', err)
-      // Fallback
-      const url = task.process_url
-        ? `${task.process_url}${task.process_url.includes('?') ? '&' : '?'}taskId=${taskId}&sendRequest=true&taskFor=${task.task_name}`
-        : `https://www.facebook.com/?taskId=${taskId}&sendRequest=true&taskFor=${task.task_name}`
+      const url = `${task.process_url || 'https://www.facebook.com'}?taskId=${taskId}&sendRequest=true&taskFor=${task.task_name}`
       window.open(url, '_blank')
     }
   }
