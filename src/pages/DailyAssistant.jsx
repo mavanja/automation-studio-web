@@ -116,11 +116,22 @@ export default function DailyAssistant() {
         console.log('[AS Web] Sending FETCH_MANAGED_GROUPS to extension...')
         chrome.runtime.sendMessage(EXT_ID, { type: 'FETCH_MANAGED_GROUPS' }, async (response) => {
           console.log('[AS Web] Extension response:', response)
-          if (chrome.runtime.lastError) {
-            console.error('[AS Web] Extension error:', chrome.runtime.lastError)
+          if (response?.groups?.length) {
+            // Save to Supabase with user_id
+            const { data: { user } } = await supabase.auth.getUser()
+            if (user) {
+              const rows = response.groups.map(g => ({
+                user_id: user.id,
+                group_id: g.groupId,
+                group_name: g.groupName,
+                member_count: g.memberCount || 0,
+                is_admin: false,
+                group_url: 'https://www.facebook.com/groups/' + g.groupId,
+              }))
+              await supabase.from('fb_groups').upsert(rows, { onConflict: 'id' })
+              console.log('[AS Web] Saved', rows.length, 'groups to Supabase')
+            }
           }
-          // Wait a moment for Supabase upsert to finish, then reload
-          await new Promise(r => setTimeout(r, 2000))
           const { data } = await supabase.from('fb_groups').select('*')
           console.log('[AS Web] Loaded groups from Supabase:', data?.length)
           setGroups(data || [])
