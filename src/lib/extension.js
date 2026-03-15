@@ -1,5 +1,5 @@
 // Communication with the Chrome Extension
-const DEFAULT_EXTENSION_ID = 'ppjgapkplgefadennimahopgbiphmlcp'
+const DEFAULT_EXTENSION_ID = 'ehaendpolcffilhljadohefkgaaplfbg'
 
 let extensionId = DEFAULT_EXTENSION_ID
 
