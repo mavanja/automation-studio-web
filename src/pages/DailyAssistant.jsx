@@ -190,6 +190,8 @@ export default function DailyAssistant() {
           filterFromType: s.filterFromType,
           messageTemplateId: s.messageTemplateId,
           maxMessageCount: Number(s.maxMessageCount) || 50,
+          country: '',
+          gender: '',
         }
 
         await supabase.from('tasks').insert({
