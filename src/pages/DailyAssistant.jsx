@@ -349,7 +349,7 @@ function GroupSettings({ step, groups, onChange, onRefreshGroups }) {
           <option value="">-- {t('assistant.select_group')} --</option>
           {groups.map(g => (
             <option key={g.id} value={`https://www.facebook.com/groups/${g.group_id}`}>
-              {g.group_name} ({g.member_count?.toLocaleString()} {t('groups.members')})
+              {g.group_name}
             </option>
           ))}
           <option value="__custom__">{t('assistant.custom_url')}</option>
