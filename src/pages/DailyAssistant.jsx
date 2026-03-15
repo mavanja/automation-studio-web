@@ -165,6 +165,7 @@ export default function DailyAssistant() {
     if (enabled.length === 0) return
     setRunning(true)
     const { data: { user } } = await supabase.auth.getUser()
+    const { data: profile } = await supabase.from('user_profiles').select('*').eq('user_id', user.id).maybeSingle()
 
     for (let i = 0; i < steps.length; i++) {
       const step = steps[i]
@@ -206,7 +207,7 @@ export default function DailyAssistant() {
           subTaskType: step.subTaskType || step.taskName,
           focusOnFb: true, isDailyWizardTask: true,
           cursorTimeGapMin: 500, cursorTimeGapMax: 1000,
-          task: { taskId, taskName: step.taskName, status: 'inprogress', maxRequest: Number(s.maxRequests), friendRequestSent: 0, processUrl: s.url, message },
+          task: { taskId, taskName: step.taskName, status: 'inprogress', maxRequest: Number(s.maxRequests), friendRequestSent: 0, processUrl: s.url, facebookUserName: profile?.fb_user_name || '', facebookUserId: profile?.fb_user_id || '', message },
         }
 
         try {

@@ -119,6 +119,7 @@ export default function Tasks() {
     if (!task) return
 
     const { data: { user } } = await supabase.auth.getUser()
+    const { data: profile } = await supabase.from('user_profiles').select('*').eq('user_id', user.id).maybeSingle()
 
     // Update status in DB
     await supabase.from('tasks').update({ status: 'inprogress' }).eq('task_id', taskId)
@@ -127,6 +128,8 @@ export default function Tasks() {
     // Build the task data structure that the extension expects
     const extensionTaskType = TASK_TYPE_MAP[task.task_name] || task.task_name
     const subTaskType = SUB_TASK_MAP[task.task_name] || task.task_name
+    const fbUserName = profile?.fb_user_name || ''
+    const fbUserId = profile?.fb_user_id || ''
 
     // Add ypwSource=t to URL so content script recognizes this as a task tab
     const baseUrl = task.process_url || 'https://www.facebook.com'
@@ -146,8 +149,8 @@ export default function Tasks() {
         maxRequest: task.max_request,
         friendRequestSent: task.friend_request_sent || 0,
         processUrl: task.process_url,
-        facebookUserName: '',
-        facebookUserId: '',
+        facebookUserName: fbUserName,
+        facebookUserId: fbUserId,
         userId: user?.id,
         message: {
           ...(task.message || {}),
