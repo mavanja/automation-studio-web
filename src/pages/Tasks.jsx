@@ -89,9 +89,54 @@ export default function Tasks() {
     }
   }
 
-  async function updateStatus(taskId, status) {
-    await supabase.from('tasks').update({ status }).eq('task_id', taskId)
-    setTasks(prev => prev.map(t => t.task_id === taskId ? { ...t, status } : t))
+  async function startTask(taskId) {
+    const task = tasks.find(t => t.task_id === taskId)
+    if (!task) return
+
+    // Update status in DB
+    await supabase.from('tasks').update({ status: 'inprogress' }).eq('task_id', taskId)
+    setTasks(prev => prev.map(t => t.task_id === taskId ? { ...t, status: 'inprogress' } : t))
+
+    // Send command to extension to open Facebook tab
+    try {
+      const url = task.process_url
+        ? `${task.process_url}${task.process_url.includes('?') ? '&' : '?'}taskId=${taskId}&sendRequest=true&taskFor=${task.task_name}`
+        : `https://www.facebook.com/?taskId=${taskId}&sendRequest=true&taskFor=${task.task_name}`
+
+      if (chrome?.runtime?.sendMessage) {
+        chrome.runtime.sendMessage(
+          'ehaendpolcffilhljadohefkgaaplfbg',
+          { type: 'CREATE_TAB', data: { url, taskType: task.task_name, taskId, focusOnFb: true } },
+          () => {}
+        )
+      } else {
+        // Fallback: open URL directly
+        window.open(url, '_blank')
+      }
+    } catch (err) {
+      console.error('Could not send to extension:', err)
+      // Fallback
+      const url = task.process_url
+        ? `${task.process_url}${task.process_url.includes('?') ? '&' : '?'}taskId=${taskId}&sendRequest=true&taskFor=${task.task_name}`
+        : `https://www.facebook.com/?taskId=${taskId}&sendRequest=true&taskFor=${task.task_name}`
+      window.open(url, '_blank')
+    }
+  }
+
+  async function stopTask(taskId) {
+    await supabase.from('tasks').update({ status: 'stopped' }).eq('task_id', taskId)
+    setTasks(prev => prev.map(t => t.task_id === taskId ? { ...t, status: 'stopped' } : t))
+
+    // Tell extension to stop
+    try {
+      if (chrome?.runtime?.sendMessage) {
+        chrome.runtime.sendMessage(
+          'ehaendpolcffilhljadohefkgaaplfbg',
+          { type: 'STOP_TASK_PROGRESS' },
+          () => {}
+        )
+      }
+    } catch {}
   }
 
   async function deleteTask(taskId) {
@@ -162,12 +207,12 @@ export default function Tasks() {
                     <td className="px-4 py-3.5">
                       <div className="flex gap-1.5">
                         {task.status !== 'inprogress' && (
-                          <button onClick={() => updateStatus(task.task_id, 'inprogress')} className="px-2.5 py-1 text-[10px] font-semibold bg-blue-50 text-blue-600 rounded-md hover:bg-blue-100 transition-colors">
+                          <button onClick={() => startTask(task.task_id)} className="px-2.5 py-1 text-[10px] font-semibold bg-blue-50 text-blue-600 rounded-md hover:bg-blue-100 transition-colors">
                             {t('tasks.start')}
                           </button>
                         )}
                         {task.status === 'inprogress' && (
-                          <button onClick={() => updateStatus(task.task_id, 'stopped')} className="px-2.5 py-1 text-[10px] font-semibold bg-amber-50 text-amber-600 rounded-md hover:bg-amber-100 transition-colors">
+                          <button onClick={() => stopTask(task.task_id)} className="px-2.5 py-1 text-[10px] font-semibold bg-amber-50 text-amber-600 rounded-md hover:bg-amber-100 transition-colors">
                             {t('tasks.stop')}
                           </button>
                         )}
