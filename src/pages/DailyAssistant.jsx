@@ -99,7 +99,7 @@ export default function DailyAssistant() {
 
   async function loadData() {
     const [g, t] = await Promise.all([
-      supabase.from('fb_groups').select('*').eq('is_admin', true),
+      supabase.from('fb_groups').select('*'),
       supabase.from('message_templates').select('*'),
     ])
     setGroups(g.data || [])
@@ -121,7 +121,7 @@ export default function DailyAssistant() {
           }
           // Wait a moment for Supabase upsert to finish, then reload
           await new Promise(r => setTimeout(r, 2000))
-          const { data } = await supabase.from('fb_groups').select('*').eq('is_admin', true)
+          const { data } = await supabase.from('fb_groups').select('*')
           console.log('[AS Web] Loaded groups from Supabase:', data?.length)
           setGroups(data || [])
           setRefreshing(false)
