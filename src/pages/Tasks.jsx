@@ -70,9 +70,11 @@ export default function Tasks() {
   async function createTask(e) {
     e.preventDefault()
     setSaving(true)
+    const { data: { user } } = await supabase.auth.getUser()
     const taskId = `${form.task_name}-${Date.now()}`
     const { error } = await supabase.from('tasks').insert({
       task_id: taskId,
+      user_id: user.id,
       task_name: form.task_name,
       process_url: form.process_url,
       max_request: Number(form.max_request),

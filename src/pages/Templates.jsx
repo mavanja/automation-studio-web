@@ -30,7 +30,9 @@ export default function Templates() {
   async function createTemplate(e) {
     e.preventDefault()
     setSaving(true)
+    const { data: { user } } = await supabase.auth.getUser()
     const { error } = await supabase.from('message_templates').insert({
+      user_id: user.id,
       template_name: form.template_name,
       template_body: form.template_body,
       variables: form.variables ? form.variables.split(',').map(v => v.trim()) : [],

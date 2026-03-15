@@ -72,7 +72,9 @@ export default function Settings() {
         fb_user_id: profile.fb_user_id,
       }).eq('id', existing.id)
     } else {
+      const { data: { user } } = await supabase.auth.getUser()
       await supabase.from('user_profiles').insert({
+        user_id: user.id,
         fb_user_name: profile.fb_user_name,
         fb_user_id: profile.fb_user_id,
       })
