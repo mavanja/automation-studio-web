@@ -204,10 +204,7 @@ export default function DailyAssistant() {
         if (s.url?.includes('/groups/')) {
           groupId = s.url.split('/groups/')[1]?.split('/')[0]?.split('?')[0] || ''
         }
-        let baseUrl = s.url || 'https://www.facebook.com'
-        if (step.taskName === 'leads-from-groups' && groupId) {
-          baseUrl = `https://www.facebook.com/groups/${groupId}/members`
-        }
+        const baseUrl = s.url || 'https://www.facebook.com'
         const taskUrl = baseUrl + (baseUrl.includes('?') ? '&' : '?') + 'ypwSource=t'
 
         const taskData = {

@@ -137,11 +137,7 @@ export default function Tasks() {
       groupId = task.process_url.split('/groups/')[1]?.split('/')[0]?.split('?')[0] || ''
     }
 
-    // For group leads: navigate to members page, not group main page
     let baseUrl = task.process_url || 'https://www.facebook.com'
-    if (task.task_name === 'leads-from-groups' && groupId) {
-      baseUrl = `https://www.facebook.com/groups/${groupId}/members`
-    }
     const taskUrl = baseUrl + (baseUrl.includes('?') ? '&' : '?') + 'ypwSource=t'
 
     const taskData = {
