@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
 import { supabase } from '../lib/supabase'
 import PageHeader from '../components/PageHeader'
+import { t } from '../lib/i18n'
 
 export default function TaskDetail() {
   const { taskId } = useParams()
@@ -35,10 +36,10 @@ export default function TaskDetail() {
   if (!task) {
     return (
       <>
-        <PageHeader title="Task Not Found" />
+        <PageHeader title={t('detail.not_found')} />
         <div className="p-7 text-center text-[#9196b0]">
-          <p className="mb-4">This task does not exist.</p>
-          <button onClick={() => navigate('/tasks')} className="text-primary font-semibold hover:underline">Back to Tasks</button>
+          <p className="mb-4">{t('detail.not_found')}</p>
+          <button onClick={() => navigate('/tasks')} className="text-primary font-semibold hover:underline">{t('detail.back')}</button>
         </div>
       </>
     )
@@ -50,34 +51,34 @@ export default function TaskDetail() {
 
   return (
     <>
-      <PageHeader title={task.task_name || task.task_id}>
+      <PageHeader title={t('tasktype.' + task.task_name) || task.task_name || task.task_id}>
         {task.status === 'inprogress' && (
           <button onClick={() => updateStatus('stopped')} className="px-4 py-2 text-sm font-semibold bg-amber-50 text-amber-600 rounded-lg hover:bg-amber-100 transition-colors">
-            Stop
+            {t('detail.stop')}
           </button>
         )}
         {(task.status === 'stopped' || task.status === 'pending') && (
           <button onClick={() => updateStatus('inprogress')} className="px-4 py-2 text-sm font-semibold bg-blue-50 text-blue-600 rounded-lg hover:bg-blue-100 transition-colors">
-            Resume
+            {t('detail.resume')}
           </button>
         )}
         <button onClick={() => navigate('/tasks')} className="px-4 py-2 text-sm font-semibold text-[#9196b0] hover:text-[#1a1d2e] transition-colors">
-          Back
+          {t('detail.back')}
         </button>
       </PageHeader>
 
       <div className="p-7 space-y-6">
         <div className="bg-white border border-[#e2e5f0] rounded-[14px] shadow-sm p-6 space-y-5">
           <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-            <InfoItem label="Status" value={<StatusBadge status={task.status} />} />
-            <InfoItem label="Task Type" value={task.task_name} />
-            <InfoItem label="Created" value={new Date(task.created_at).toLocaleString('de')} />
-            <InfoItem label="Max Requests" value={task.max_request || '-'} />
+            <InfoItem label={t('tasks.status')} value={<StatusBadge status={task.status} />} />
+            <InfoItem label={t('detail.task_type')} value={t('tasktype.' + task.task_name) || task.task_name} />
+            <InfoItem label={t('detail.created')} value={new Date(task.created_at).toLocaleString('de')} />
+            <InfoItem label={t('detail.max_requests')} value={task.max_request || '-'} />
           </div>
 
           {task.process_url && (
             <div>
-              <span className="text-[10px] text-[#9196b0] uppercase tracking-wide font-bold">URL</span>
+              <span className="text-[10px] text-[#9196b0] uppercase tracking-wide font-bold">{t('tasks.url')}</span>
               <a href={task.process_url} target="_blank" rel="noopener noreferrer" className="block text-sm text-primary hover:underline mt-1 truncate">
                 {task.process_url}
               </a>
@@ -86,7 +87,7 @@ export default function TaskDetail() {
 
           <div>
             <div className="flex justify-between mb-2">
-              <span className="text-xs font-semibold text-[#9196b0]">Progress</span>
+              <span className="text-xs font-semibold text-[#9196b0]">{t('detail.progress')}</span>
               <span className="text-xs font-bold text-[#1a1d2e]">{task.friend_request_sent || 0} / {task.max_request || '-'} ({progress}%)</span>
             </div>
             <div className="w-full h-3 bg-[#f4f6fb] rounded-full overflow-hidden">
@@ -100,11 +101,11 @@ export default function TaskDetail() {
 
         <div className="bg-white border border-[#e2e5f0] rounded-[14px] shadow-sm">
           <div className="px-[22px] py-4 border-b border-[#e2e5f0] flex items-center justify-between">
-            <h3 className="text-[15px] font-bold text-[#1a1d2e]">Results ({results.length})</h3>
+            <h3 className="text-[15px] font-bold text-[#1a1d2e]">{t('detail.results')} ({results.length})</h3>
           </div>
 
           {results.length === 0 ? (
-            <div className="p-12 text-center text-[#9196b0] text-sm">No results yet.</div>
+            <div className="p-12 text-center text-[#9196b0] text-sm">{t('detail.no_results')}</div>
           ) : (
             <div className="max-h-[500px] overflow-y-auto divide-y divide-[#e2e5f0]">
               {results.map(r => {

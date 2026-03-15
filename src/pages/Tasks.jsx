@@ -2,36 +2,37 @@ import React, { useState, useEffect } from 'react'
 import { Link } from 'react-router-dom'
 import { supabase } from '../lib/supabase'
 import PageHeader from '../components/PageHeader'
+import { t } from '../lib/i18n'
 
 const TASK_TYPES = [
   { group: 'Lead Generation', options: [
-    { value: 'leads-from-groups', label: 'Leads from Groups' },
-    { value: 'leads-from-content', label: 'Leads from Content' },
-    { value: 'leads-from-peaple', label: 'Leads from People' },
-    { value: 'leads-from-suggestions', label: 'Leads from Suggestions' },
+    { value: 'leads-from-groups' },
+    { value: 'leads-from-content' },
+    { value: 'leads-from-peaple' },
+    { value: 'leads-from-suggestions' },
   ]},
   { group: 'Engagement', options: [
-    { value: 'contentToolsGainRaciprocity', label: 'Gain Reciprocity' },
-    { value: 'contentToolsProspectByPost', label: 'Prospect by Post' },
-    { value: 'contentToolsTagsForAttention', label: 'Tags for Attention' },
+    { value: 'contentToolsGainRaciprocity' },
+    { value: 'contentToolsProspectByPost' },
+    { value: 'contentToolsTagsForAttention' },
   ]},
   { group: 'Messaging', options: [
-    { value: 'broadcast-message', label: 'Broadcast Message' },
+    { value: 'broadcast-message' },
   ]},
   { group: 'Friend Management', options: [
-    { value: 'friends-sync', label: 'Sync Friends' },
-    { value: 'date-friended', label: 'Date Friended' },
-    { value: 'cancel-friend-request', label: 'Cancel Friend Request' },
-    { value: 'start-unfriending', label: 'Start Unfriending' },
-    { value: 'scan-friend-activity', label: 'Scan Friend Activity' },
+    { value: 'friends-sync' },
+    { value: 'date-friended' },
+    { value: 'cancel-friend-request' },
+    { value: 'start-unfriending' },
+    { value: 'scan-friend-activity' },
   ]},
 ]
 
 const FILTERS = [
-  { key: 'all', label: 'All' },
-  { key: 'inprogress', label: 'In Progress' },
-  { key: 'completed', label: 'Completed' },
-  { key: 'stopped', label: 'Stopped' },
+  { key: 'all', labelKey: 'tasks.all' },
+  { key: 'inprogress', labelKey: 'tasks.inprogress' },
+  { key: 'completed', labelKey: 'tasks.completed_filter' },
+  { key: 'stopped', labelKey: 'tasks.stopped_filter' },
 ]
 
 export default function Tasks() {
@@ -92,7 +93,7 @@ export default function Tasks() {
   }
 
   async function deleteTask(taskId) {
-    if (!window.confirm('Delete this task and all its results?')) return
+    if (!window.confirm(t('tasks.delete_confirm'))) return
     await supabase.from('task_results').delete().eq('task_id', taskId)
     await supabase.from('tasks').delete().eq('task_id', taskId)
     setTasks(prev => prev.filter(t => t.task_id !== taskId))
@@ -106,9 +107,9 @@ export default function Tasks() {
 
   return (
     <>
-      <PageHeader title="Tasks">
+      <PageHeader title={t('tasks.title')}>
         <button onClick={openModal} className="px-4 py-2 bg-primary text-white text-sm font-semibold rounded-lg hover:bg-blue-700 transition-colors">
-          + New Task
+          {t('tasks.new')}
         </button>
       </PageHeader>
 
@@ -124,24 +125,24 @@ export default function Tasks() {
                   : 'bg-white border border-[#e2e5f0] text-[#9196b0] hover:text-[#1a1d2e]'
               }`}
             >
-              {f.label}
+              {t(f.labelKey)}
             </button>
           ))}
         </div>
 
         <div className="bg-white border border-[#e2e5f0] rounded-[14px] shadow-sm overflow-hidden">
           {filtered.length === 0 ? (
-            <div className="p-12 text-center text-[#9196b0] text-sm">No tasks found.</div>
+            <div className="p-12 text-center text-[#9196b0] text-sm">{t('tasks.no_tasks')}</div>
           ) : (
             <table className="w-full">
               <thead>
                 <tr className="bg-[#f4f6fb]">
-                  <th className="text-left px-4 py-3 text-[10px] text-[#9196b0] uppercase tracking-[0.8px] font-bold">Task</th>
-                  <th className="text-left px-4 py-3 text-[10px] text-[#9196b0] uppercase tracking-[0.8px] font-bold">URL</th>
-                  <th className="text-left px-4 py-3 text-[10px] text-[#9196b0] uppercase tracking-[0.8px] font-bold">Status</th>
-                  <th className="text-left px-4 py-3 text-[10px] text-[#9196b0] uppercase tracking-[0.8px] font-bold">Progress</th>
-                  <th className="text-left px-4 py-3 text-[10px] text-[#9196b0] uppercase tracking-[0.8px] font-bold">Created</th>
-                  <th className="text-left px-4 py-3 text-[10px] text-[#9196b0] uppercase tracking-[0.8px] font-bold">Actions</th>
+                  <th className="text-left px-4 py-3 text-[10px] text-[#9196b0] uppercase tracking-[0.8px] font-bold">{t('tasks.task')}</th>
+                  <th className="text-left px-4 py-3 text-[10px] text-[#9196b0] uppercase tracking-[0.8px] font-bold">{t('tasks.url')}</th>
+                  <th className="text-left px-4 py-3 text-[10px] text-[#9196b0] uppercase tracking-[0.8px] font-bold">{t('tasks.status')}</th>
+                  <th className="text-left px-4 py-3 text-[10px] text-[#9196b0] uppercase tracking-[0.8px] font-bold">{t('tasks.progress')}</th>
+                  <th className="text-left px-4 py-3 text-[10px] text-[#9196b0] uppercase tracking-[0.8px] font-bold">{t('tasks.created')}</th>
+                  <th className="text-left px-4 py-3 text-[10px] text-[#9196b0] uppercase tracking-[0.8px] font-bold">{t('tasks.actions')}</th>
                 </tr>
               </thead>
               <tbody>
@@ -149,7 +150,7 @@ export default function Tasks() {
                   <tr key={task.task_id} className="hover:bg-[rgba(24,119,242,0.03)] transition-colors border-t border-[#e2e5f0]">
                     <td className="px-4 py-3.5">
                       <Link to={`/tasks/${task.task_id}`} className="font-semibold text-sm text-[#1a1d2e] hover:text-primary">
-                        {task.task_name || task.task_id}
+                        {t('tasktype.' + task.task_name) || task.task_name || task.task_id}
                       </Link>
                     </td>
                     <td className="px-4 py-3.5 text-[11px] text-[#9196b0] max-w-[200px] truncate">{task.process_url || '-'}</td>
@@ -160,16 +161,16 @@ export default function Tasks() {
                       <div className="flex gap-1.5">
                         {task.status !== 'inprogress' && (
                           <button onClick={() => updateStatus(task.task_id, 'inprogress')} className="px-2.5 py-1 text-[10px] font-semibold bg-blue-50 text-blue-600 rounded-md hover:bg-blue-100 transition-colors">
-                            Start
+                            {t('tasks.start')}
                           </button>
                         )}
                         {task.status === 'inprogress' && (
                           <button onClick={() => updateStatus(task.task_id, 'stopped')} className="px-2.5 py-1 text-[10px] font-semibold bg-amber-50 text-amber-600 rounded-md hover:bg-amber-100 transition-colors">
-                            Stop
+                            {t('tasks.stop')}
                           </button>
                         )}
                         <button onClick={() => deleteTask(task.task_id)} className="px-2.5 py-1 text-[10px] font-semibold bg-red-50 text-red-600 rounded-md hover:bg-red-100 transition-colors">
-                          Delete
+                          {t('tasks.delete')}
                         </button>
                       </div>
                     </td>
@@ -184,21 +185,21 @@ export default function Tasks() {
       {showModal && (
         <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50" onClick={() => setShowModal(false)}>
           <div className="bg-white rounded-2xl shadow-xl w-full max-w-lg p-6 space-y-5" onClick={e => e.stopPropagation()}>
-            <h3 className="text-lg font-bold text-[#1a1d2e]">New Task</h3>
+            <h3 className="text-lg font-bold text-[#1a1d2e]">{t('tasks.create_title')}</h3>
             <form onSubmit={createTask} className="space-y-4">
               <div>
-                <label className="block text-xs font-semibold text-[#9196b0] uppercase tracking-wide mb-1.5">Task Type</label>
+                <label className="block text-xs font-semibold text-[#9196b0] uppercase tracking-wide mb-1.5">{t('tasks.type')}</label>
                 <select
                   value={form.task_name}
                   onChange={e => setForm({ ...form, task_name: e.target.value })}
                   required
                   className="w-full border border-[#e2e5f0] rounded-lg px-3 py-2.5 text-sm text-[#1a1d2e] focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary"
                 >
-                  <option value="">Select task type...</option>
+                  <option value="">{t('tasks.type')}...</option>
                   {TASK_TYPES.map(group => (
                     <optgroup key={group.group} label={group.group}>
                       {group.options.map(opt => (
-                        <option key={opt.value} value={opt.value}>{opt.label}</option>
+                        <option key={opt.value} value={opt.value}>{t('tasktype.' + opt.value) || opt.value}</option>
                       ))}
                     </optgroup>
                   ))}
@@ -206,18 +207,18 @@ export default function Tasks() {
               </div>
 
               <div>
-                <label className="block text-xs font-semibold text-[#9196b0] uppercase tracking-wide mb-1.5">Facebook URL</label>
+                <label className="block text-xs font-semibold text-[#9196b0] uppercase tracking-wide mb-1.5">{t('tasks.fb_url')}</label>
                 <input
                   type="url"
                   value={form.process_url}
                   onChange={e => setForm({ ...form, process_url: e.target.value })}
-                  placeholder="https://facebook.com/groups/..."
+                  placeholder={t('tasks.fb_url_placeholder')}
                   className="w-full border border-[#e2e5f0] rounded-lg px-3 py-2.5 text-sm text-[#1a1d2e] focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary"
                 />
               </div>
 
               <div>
-                <label className="block text-xs font-semibold text-[#9196b0] uppercase tracking-wide mb-1.5">Max Requests</label>
+                <label className="block text-xs font-semibold text-[#9196b0] uppercase tracking-wide mb-1.5">{t('tasks.max_requests')}</label>
                 <input
                   type="number"
                   min="1"
@@ -229,13 +230,13 @@ export default function Tasks() {
               </div>
 
               <div>
-                <label className="block text-xs font-semibold text-[#9196b0] uppercase tracking-wide mb-1.5">Template (optional)</label>
+                <label className="block text-xs font-semibold text-[#9196b0] uppercase tracking-wide mb-1.5">{t('tasks.template')}</label>
                 <select
                   value={form.message}
                   onChange={e => setForm({ ...form, message: e.target.value })}
                   className="w-full border border-[#e2e5f0] rounded-lg px-3 py-2.5 text-sm text-[#1a1d2e] focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary"
                 >
-                  <option value="">No template</option>
+                  <option value="">{t('tasks.template_none')}</option>
                   {templates.map(t => (
                     <option key={t.id} value={t.template_body}>{t.template_name}</option>
                   ))}
@@ -244,10 +245,10 @@ export default function Tasks() {
 
               <div className="flex justify-end gap-3 pt-2">
                 <button type="button" onClick={() => setShowModal(false)} className="px-4 py-2 text-sm font-semibold text-[#9196b0] hover:text-[#1a1d2e] transition-colors">
-                  Cancel
+                  {t('tasks.cancel')}
                 </button>
                 <button type="submit" disabled={saving} className="px-5 py-2 bg-primary text-white text-sm font-semibold rounded-lg hover:bg-blue-700 transition-colors disabled:opacity-50">
-                  {saving ? 'Creating...' : 'Create Task'}
+                  {saving ? t('tasks.creating') : t('tasks.create')}
                 </button>
               </div>
             </form>

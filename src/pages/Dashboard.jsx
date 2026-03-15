@@ -3,6 +3,7 @@ import { Link } from 'react-router-dom'
 import { supabase } from '../lib/supabase'
 import PageHeader from '../components/PageHeader'
 import StatCard from '../components/StatCard'
+import { t } from '../lib/i18n'
 
 export default function Dashboard() {
   const [stats, setStats] = useState({})
@@ -38,39 +39,39 @@ export default function Dashboard() {
 
   return (
     <>
-      <PageHeader title="Dashboard" />
+      <PageHeader title={t('nav.dashboard')} />
       <div className="p-7 space-y-7">
         <div className="grid grid-cols-2 lg:grid-cols-3 xl:grid-cols-6 gap-4">
-          <StatCard label="Aufgaben gesamt" value={stats.total} />
-          <StatCard label="Aktive Aufgaben" value={stats.active} />
-          <StatCard label="Abgeschlossen" value={stats.completed} />
-          <StatCard label="Freunde sync." value={stats.friends} />
-          <StatCard label="Ergebnisse gesamt" value={stats.results} />
-          <StatCard label="Gruppen erfasst" value={stats.groups} />
+          <StatCard label={t('dash.total_tasks')} value={stats.total} />
+          <StatCard label={t('dash.active_tasks')} value={stats.active} />
+          <StatCard label={t('dash.completed')} value={stats.completed} />
+          <StatCard label={t('dash.friends_synced')} value={stats.friends} />
+          <StatCard label={t('dash.total_results')} value={stats.results} />
+          <StatCard label={t('dash.groups_tracked')} value={stats.groups} />
         </div>
 
         <div className="bg-white border border-[#e2e5f0] rounded-[14px] shadow-sm">
           <div className="flex items-center justify-between px-[22px] py-4 border-b border-[#e2e5f0]">
-            <h3 className="text-[15px] font-bold text-[#1a1d2e]">Letzte Aufgaben</h3>
-            <Link to="/tasks" className="text-xs text-primary font-semibold hover:underline">Alle anzeigen</Link>
+            <h3 className="text-[15px] font-bold text-[#1a1d2e]">{t('dash.recent_tasks')}</h3>
+            <Link to="/tasks" className="text-xs text-primary font-semibold hover:underline">{t('dash.view_all')}</Link>
           </div>
           {recentTasks.length === 0 ? (
-            <div className="p-12 text-center text-[#9196b0] text-sm">Noch keine Aufgaben. Erstelle eine neue Aufgabe um zu starten.</div>
+            <div className="p-12 text-center text-[#9196b0] text-sm">{t('dash.no_tasks')}</div>
           ) : (
             <table className="w-full">
               <thead>
                 <tr className="bg-[#f4f6fb]">
-                  <th className="text-left px-4 py-3 text-[10px] text-[#9196b0] uppercase tracking-[0.8px] font-bold">Aufgabe</th>
-                  <th className="text-left px-4 py-3 text-[10px] text-[#9196b0] uppercase tracking-[0.8px] font-bold">URL</th>
-                  <th className="text-left px-4 py-3 text-[10px] text-[#9196b0] uppercase tracking-[0.8px] font-bold">Status</th>
-                  <th className="text-left px-4 py-3 text-[10px] text-[#9196b0] uppercase tracking-[0.8px] font-bold">Fortschritt</th>
-                  <th className="text-left px-4 py-3 text-[10px] text-[#9196b0] uppercase tracking-[0.8px] font-bold">Erstellt</th>
+                  <th className="text-left px-4 py-3 text-[10px] text-[#9196b0] uppercase tracking-[0.8px] font-bold">{t('tasks.task')}</th>
+                  <th className="text-left px-4 py-3 text-[10px] text-[#9196b0] uppercase tracking-[0.8px] font-bold">{t('tasks.url')}</th>
+                  <th className="text-left px-4 py-3 text-[10px] text-[#9196b0] uppercase tracking-[0.8px] font-bold">{t('tasks.status')}</th>
+                  <th className="text-left px-4 py-3 text-[10px] text-[#9196b0] uppercase tracking-[0.8px] font-bold">{t('tasks.progress')}</th>
+                  <th className="text-left px-4 py-3 text-[10px] text-[#9196b0] uppercase tracking-[0.8px] font-bold">{t('tasks.created')}</th>
                 </tr>
               </thead>
               <tbody>
                 {recentTasks.map(task => (
                   <tr key={task.id} className="hover:bg-[rgba(24,119,242,0.03)] transition-colors">
-                    <td className="px-4 py-3.5"><Link to={`/tasks/${task.task_id}`} className="font-semibold text-sm text-[#1a1d2e] hover:text-primary">{task.task_name || task.task_id}</Link></td>
+                    <td className="px-4 py-3.5"><Link to={`/tasks/${task.task_id}`} className="font-semibold text-sm text-[#1a1d2e] hover:text-primary">{t('tasktype.' + task.task_name) || task.task_name || task.task_id}</Link></td>
                     <td className="px-4 py-3.5 text-[11px] text-[#9196b0] max-w-[250px] truncate">{task.process_url || '-'}</td>
                     <td className="px-4 py-3.5"><StatusBadge status={task.status} /></td>
                     <td className="px-4 py-3.5 text-sm text-[#1a1d2e]">{task.friend_request_sent || 0} / {task.max_request || '-'}</td>

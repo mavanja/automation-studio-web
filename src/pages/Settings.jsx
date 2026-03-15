@@ -1,10 +1,11 @@
 import React, { useState, useEffect } from 'react'
 import { supabase } from '../lib/supabase'
 import PageHeader from '../components/PageHeader'
+import { t, setLang, getLang } from '../lib/i18n'
 
 export default function Settings() {
   const [profile, setProfile] = useState({ fb_user_name: '', fb_user_id: '' })
-  const [language, setLanguage] = useState('DE')
+  const [language, setLanguage] = useState(getLang())
   const [autoClick, setAutoClick] = useState(false)
   const [tabSwitching, setTabSwitching] = useState(false)
   const [extensionId, setExtensionId] = useState('')
@@ -29,7 +30,7 @@ export default function Settings() {
     if (stored) {
       try {
         const s = JSON.parse(stored)
-        setLanguage(s.language || 'DE')
+        setLanguage(s.language || getLang())
         setAutoClick(s.autoClick || false)
         setTabSwitching(s.tabSwitching || false)
         setExtensionId(s.extensionId || '')
@@ -78,7 +79,7 @@ export default function Settings() {
     }
 
     setSaving(false)
-    setSaveMsg('Profile saved.')
+    setSaveMsg(t('settings.saved'))
     setTimeout(() => setSaveMsg(''), 3000)
   }
 
@@ -88,6 +89,14 @@ export default function Settings() {
     if (updates.extensionId !== undefined) {
       localStorage.setItem('as_extension_id', updates.extensionId)
     }
+  }
+
+  function handleLanguageChange(lang) {
+    const langCode = lang === 'DE' ? 'de' : 'en'
+    setLanguage(lang)
+    setLang(langCode)
+    saveLocalSettings({ language: lang })
+    window.location.reload()
   }
 
   async function exportAllData() {
@@ -153,8 +162,8 @@ export default function Settings() {
   }
 
   async function deleteAllData() {
-    if (!window.confirm('DELETE ALL DATA? This cannot be undone!')) return
-    if (!window.confirm('Are you absolutely sure? All tasks, results, friends, groups, and templates will be permanently deleted.')) return
+    if (!window.confirm(t('settings.delete_confirm'))) return
+    if (!window.confirm(t('settings.delete_confirm'))) return
 
     await Promise.all([
       supabase.from('task_results').delete().neq('id', 0),
@@ -172,14 +181,14 @@ export default function Settings() {
 
   return (
     <>
-      <PageHeader title="Settings" />
+      <PageHeader title={t('settings.title')} />
 
       <div className="p-7 space-y-6 max-w-3xl">
         {/* Facebook Profile */}
-        <Section title="Facebook Profile">
+        <Section title={t('settings.profile')}>
           <form onSubmit={saveProfile} className="space-y-4">
             <div>
-              <label className="block text-xs font-semibold text-[#9196b0] uppercase tracking-wide mb-1.5">Username</label>
+              <label className="block text-xs font-semibold text-[#9196b0] uppercase tracking-wide mb-1.5">{t('settings.username')}</label>
               <input
                 type="text"
                 value={profile.fb_user_name}
@@ -189,7 +198,7 @@ export default function Settings() {
               />
             </div>
             <div>
-              <label className="block text-xs font-semibold text-[#9196b0] uppercase tracking-wide mb-1.5">User ID</label>
+              <label className="block text-xs font-semibold text-[#9196b0] uppercase tracking-wide mb-1.5">{t('settings.user_id')}</label>
               <input
                 type="text"
                 value={profile.fb_user_id}
@@ -200,7 +209,7 @@ export default function Settings() {
             </div>
             <div className="flex items-center gap-3">
               <button type="submit" disabled={saving} className="px-5 py-2 bg-primary text-white text-sm font-semibold rounded-lg hover:bg-blue-700 transition-colors disabled:opacity-50">
-                {saving ? 'Saving...' : 'Save Profile'}
+                {saving ? t('common.loading') : t('settings.save_profile')}
               </button>
               {saveMsg && <span className="text-sm text-emerald-600 font-semibold">{saveMsg}</span>}
             </div>
@@ -208,12 +217,12 @@ export default function Settings() {
         </Section>
 
         {/* Language */}
-        <Section title="Language">
+        <Section title={t('settings.language')}>
           <div className="flex gap-2">
             {['DE', 'EN'].map(lang => (
               <button
                 key={lang}
-                onClick={() => { setLanguage(lang); saveLocalSettings({ language: lang }) }}
+                onClick={() => handleLanguageChange(lang)}
                 className={`px-4 py-2 text-sm font-semibold rounded-lg transition-colors ${
                   language === lang
                     ? 'bg-primary text-white'
@@ -227,17 +236,17 @@ export default function Settings() {
         </Section>
 
         {/* Automation Toggles */}
-        <Section title="Automation">
+        <Section title={t('settings.automation')}>
           <div className="space-y-4">
             <Toggle
-              label="Auto-Click"
-              description="Automatically click Facebook elements during tasks"
+              label={t('settings.auto_click')}
+              description=""
               checked={autoClick}
               onChange={v => { setAutoClick(v); saveLocalSettings({ autoClick: v }) }}
             />
             <Toggle
-              label="Tab Switching"
-              description="Allow extension to switch browser tabs during automation"
+              label={t('settings.tab_switching')}
+              description=""
               checked={tabSwitching}
               onChange={v => { setTabSwitching(v); saveLocalSettings({ tabSwitching: v }) }}
             />
@@ -245,16 +254,16 @@ export default function Settings() {
         </Section>
 
         {/* Extension Connection */}
-        <Section title="Extension Connection">
+        <Section title={t('settings.extension')}>
           <div className="space-y-4">
             <div className="flex items-center gap-3">
               <div className={`w-3 h-3 rounded-full ${extensionConnected ? 'bg-emerald-500' : 'bg-red-400'}`} />
               <span className="text-sm font-semibold text-[#1a1d2e]">
-                {extensionConnected ? 'Connected' : 'Not Connected'}
+                {extensionConnected ? t('settings.ext_connected') : t('settings.ext_not_connected')}
               </span>
             </div>
             <div>
-              <label className="block text-xs font-semibold text-[#9196b0] uppercase tracking-wide mb-1.5">Extension ID</label>
+              <label className="block text-xs font-semibold text-[#9196b0] uppercase tracking-wide mb-1.5">{t('settings.ext_id')}</label>
               <div className="flex gap-2">
                 <input
                   type="text"
@@ -267,7 +276,7 @@ export default function Settings() {
                   onClick={() => { saveLocalSettings({ extensionId }); checkExtension() }}
                   className="px-4 py-2 bg-primary text-white text-sm font-semibold rounded-lg hover:bg-blue-700 transition-colors"
                 >
-                  Connect
+                  {t('settings.ext_connect')}
                 </button>
               </div>
             </div>
@@ -276,16 +285,16 @@ export default function Settings() {
 
         {/* Danger Zone */}
         <div className="bg-white border-2 border-red-200 rounded-[14px] shadow-sm p-6">
-          <h3 className="text-sm font-bold text-red-600 uppercase tracking-wide mb-4">Danger Zone</h3>
+          <h3 className="text-sm font-bold text-red-600 uppercase tracking-wide mb-4">{t('settings.danger_zone')}</h3>
           <div className="flex flex-wrap gap-3">
             <button onClick={exportAllData} className="px-4 py-2 text-sm font-semibold bg-[#f4f6fb] text-[#1a1d2e] rounded-lg hover:bg-[#e2e5f0] transition-colors">
-              Export All Data
+              {t('settings.export_all')}
             </button>
             <button onClick={importData} className="px-4 py-2 text-sm font-semibold bg-[#f4f6fb] text-[#1a1d2e] rounded-lg hover:bg-[#e2e5f0] transition-colors">
-              Import Data
+              {t('settings.import')}
             </button>
             <button onClick={deleteAllData} className="px-4 py-2 text-sm font-semibold bg-red-50 text-red-600 rounded-lg hover:bg-red-100 transition-colors">
-              Delete All Data
+              {t('settings.delete_all')}
             </button>
           </div>
         </div>
@@ -308,7 +317,7 @@ function Toggle({ label, description, checked, onChange }) {
     <div className="flex items-center justify-between">
       <div>
         <p className="text-sm font-semibold text-[#1a1d2e]">{label}</p>
-        <p className="text-[11px] text-[#9196b0]">{description}</p>
+        {description && <p className="text-[11px] text-[#9196b0]">{description}</p>}
       </div>
       <button
         onClick={() => onChange(!checked)}

@@ -1,4 +1,5 @@
 import React, { useState } from 'react'
+import { t } from '../lib/i18n'
 
 export default function Login({ onSignIn }) {
   const [email, setEmail] = useState('')
@@ -13,7 +14,7 @@ export default function Login({ onSignIn }) {
     try {
       await onSignIn(email, password)
     } catch (err) {
-      setError(err.message || 'Anmeldung fehlgeschlagen')
+      setError(err.message || t('auth.login_failed'))
     } finally {
       setLoading(false)
     }
@@ -30,7 +31,7 @@ export default function Login({ onSignIn }) {
 
         <form onSubmit={handleSubmit} className="text-left space-y-4">
           <div>
-            <label className="block text-[11px] text-[#9196b0] font-semibold uppercase tracking-wide mb-1.5">E-Mail</label>
+            <label className="block text-[11px] text-[#9196b0] font-semibold uppercase tracking-wide mb-1.5">{t('auth.email')}</label>
             <input
               type="email"
               value={email}
@@ -41,7 +42,7 @@ export default function Login({ onSignIn }) {
             />
           </div>
           <div>
-            <label className="block text-[11px] text-[#9196b0] font-semibold uppercase tracking-wide mb-1.5">Passwort</label>
+            <label className="block text-[11px] text-[#9196b0] font-semibold uppercase tracking-wide mb-1.5">{t('auth.password')}</label>
             <input
               type="password"
               value={password}
@@ -57,7 +58,7 @@ export default function Login({ onSignIn }) {
             disabled={loading}
             className="w-full py-3 bg-gradient-to-r from-primary to-[#42a5f5] text-white rounded-[10px] text-sm font-semibold shadow-[0_2px_10px_rgba(24,119,242,0.15)] hover:shadow-[0_6px_20px_rgba(24,119,242,0.25)] hover:-translate-y-0.5 transition-all disabled:opacity-50"
           >
-            {loading ? 'Anmelden...' : 'Anmelden'}
+            {loading ? t('auth.logging_in') : t('auth.login')}
           </button>
         </form>
       </div>

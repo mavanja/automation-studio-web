@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react'
 import { supabase } from '../lib/supabase'
 import PageHeader from '../components/PageHeader'
+import { t } from '../lib/i18n'
 
 const TYPE_STYLES = {
   info: 'bg-blue-50 text-blue-600',
@@ -27,7 +28,7 @@ export default function Logs() {
   }
 
   async function clearLogs() {
-    if (!window.confirm('Clear all activity logs? This cannot be undone.')) return
+    if (!window.confirm(t('logs.clear_confirm'))) return
     await supabase.from('activity_logs').delete().neq('id', 0)
     setLogs([])
   }
@@ -38,10 +39,10 @@ export default function Logs() {
 
   return (
     <>
-      <PageHeader title="Activity Logs">
+      <PageHeader title={t('logs.title')}>
         {logs.length > 0 && (
           <button onClick={clearLogs} className="px-4 py-2 text-sm font-semibold bg-red-50 text-red-600 rounded-lg hover:bg-red-100 transition-colors">
-            Clear Logs
+            {t('logs.clear')}
           </button>
         )}
       </PageHeader>
@@ -49,15 +50,15 @@ export default function Logs() {
       <div className="p-7">
         <div className="bg-white border border-[#e2e5f0] rounded-[14px] shadow-sm overflow-hidden">
           {logs.length === 0 ? (
-            <div className="p-12 text-center text-[#9196b0] text-sm">No activity logs recorded.</div>
+            <div className="p-12 text-center text-[#9196b0] text-sm">{t('logs.no_logs')}</div>
           ) : (
             <div className="max-h-[700px] overflow-y-auto">
               <table className="w-full">
                 <thead className="sticky top-0">
                   <tr className="bg-[#f4f6fb]">
-                    <th className="text-left px-4 py-3 text-[10px] text-[#9196b0] uppercase tracking-[0.8px] font-bold w-[180px]">Timestamp</th>
-                    <th className="text-left px-4 py-3 text-[10px] text-[#9196b0] uppercase tracking-[0.8px] font-bold w-[100px]">Type</th>
-                    <th className="text-left px-4 py-3 text-[10px] text-[#9196b0] uppercase tracking-[0.8px] font-bold">Message</th>
+                    <th className="text-left px-4 py-3 text-[10px] text-[#9196b0] uppercase tracking-[0.8px] font-bold w-[180px]">{t('logs.time')}</th>
+                    <th className="text-left px-4 py-3 text-[10px] text-[#9196b0] uppercase tracking-[0.8px] font-bold w-[100px]">{t('logs.type')}</th>
+                    <th className="text-left px-4 py-3 text-[10px] text-[#9196b0] uppercase tracking-[0.8px] font-bold">{t('logs.message')}</th>
                   </tr>
                 </thead>
                 <tbody>

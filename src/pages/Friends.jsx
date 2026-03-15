@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react'
 import { supabase } from '../lib/supabase'
 import PageHeader from '../components/PageHeader'
+import { t } from '../lib/i18n'
 
 export default function Friends() {
   const [friends, setFriends] = useState([])
@@ -32,8 +33,8 @@ export default function Friends() {
 
   return (
     <>
-      <PageHeader title="Synced Friends">
-        <span className="text-sm text-[#9196b0] font-semibold">{friends.length} friends</span>
+      <PageHeader title={t('friends.title')}>
+        <span className="text-sm text-[#9196b0] font-semibold">{t('friends.count', { count: friends.length })}</span>
       </PageHeader>
 
       <div className="p-7 space-y-5">
@@ -42,14 +43,14 @@ export default function Friends() {
             type="text"
             value={search}
             onChange={e => setSearch(e.target.value)}
-            placeholder="Search friends..."
+            placeholder={t('friends.search')}
             className="w-full max-w-sm border border-[#e2e5f0] rounded-lg px-3 py-2.5 text-sm text-[#1a1d2e] focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary"
           />
         </div>
 
         {filtered.length === 0 ? (
           <div className="bg-white border border-[#e2e5f0] rounded-[14px] shadow-sm p-12 text-center text-[#9196b0] text-sm">
-            {search ? 'No friends match your search.' : 'No friends synced yet. Run a friends-sync task first.'}
+            {search ? t('friends.no_friends') : t('friends.no_friends')}
           </div>
         ) : (
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
@@ -65,7 +66,7 @@ export default function Friends() {
                   {friend.username && <p className="text-[11px] text-[#9196b0] truncate">@{friend.username}</p>}
                   {friend.profile_link && (
                     <a href={friend.profile_link} target="_blank" rel="noopener noreferrer" className="text-[10px] text-primary hover:underline">
-                      View Profile
+                      {t('friends.profile')}
                     </a>
                   )}
                 </div>

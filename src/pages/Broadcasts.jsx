@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react'
 import { supabase } from '../lib/supabase'
 import PageHeader from '../components/PageHeader'
+import { t } from '../lib/i18n'
 
 export default function Broadcasts() {
   const [lists, setLists] = useState([])
@@ -47,12 +48,12 @@ export default function Broadcasts() {
 
   return (
     <>
-      <PageHeader title="Broadcast Lists" />
+      <PageHeader title={t('broadcasts.title')} />
 
       <div className="p-7">
         {lists.length === 0 ? (
           <div className="bg-white border border-[#e2e5f0] rounded-[14px] shadow-sm p-12 text-center text-[#9196b0] text-sm">
-            No broadcast lists found.
+            {t('broadcasts.no_lists')}
           </div>
         ) : (
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
@@ -66,7 +67,7 @@ export default function Broadcasts() {
                   </div>
                   <div className="min-w-0 flex-1">
                     <h3 className="text-sm font-bold text-[#1a1d2e] truncate">{list.list_name}</h3>
-                    <p className="text-[11px] text-[#9196b0]">{list.user_count} {list.user_count === 1 ? 'user' : 'users'}</p>
+                    <p className="text-[11px] text-[#9196b0]">{list.user_count} {t('broadcasts.users')}</p>
                   </div>
                 </div>
                 <div className="flex items-center justify-between pt-3 border-t border-[#e2e5f0]">

@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react'
 import { supabase } from '../lib/supabase'
 import PageHeader from '../components/PageHeader'
+import { t } from '../lib/i18n'
 
 export default function Results() {
   const [tasks, setTasks] = useState([])
@@ -67,26 +68,26 @@ export default function Results() {
 
   return (
     <>
-      <PageHeader title="Results">
+      <PageHeader title={t('results.title')}>
         {results.length > 0 && (
           <button onClick={exportCSV} className="px-4 py-2 bg-primary text-white text-sm font-semibold rounded-lg hover:bg-blue-700 transition-colors">
-            Export CSV
+            {t('results.export_csv')}
           </button>
         )}
       </PageHeader>
 
       <div className="p-7 space-y-5">
         <div className="bg-white border border-[#e2e5f0] rounded-[14px] shadow-sm p-5">
-          <label className="block text-xs font-semibold text-[#9196b0] uppercase tracking-wide mb-2">Select Task</label>
+          <label className="block text-xs font-semibold text-[#9196b0] uppercase tracking-wide mb-2">{t('results.select_task')}</label>
           <select
             value={selectedTask}
             onChange={e => loadResults(e.target.value)}
             className="w-full max-w-md border border-[#e2e5f0] rounded-lg px-3 py-2.5 text-sm text-[#1a1d2e] focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary"
           >
-            <option value="">Choose a task...</option>
-            {tasks.map(t => (
-              <option key={t.task_id} value={t.task_id}>
-                {t.task_name || t.task_id} ({new Date(t.created_at).toLocaleDateString('de')})
+            <option value="">{t('results.select_option')}</option>
+            {tasks.map(task => (
+              <option key={task.task_id} value={task.task_id}>
+                {t('tasktype.' + task.task_name) || task.task_name || task.task_id} ({new Date(task.created_at).toLocaleDateString('de')})
               </option>
             ))}
           </select>
@@ -95,13 +96,13 @@ export default function Results() {
         {selectedTask && (
           <div className="bg-white border border-[#e2e5f0] rounded-[14px] shadow-sm">
             <div className="px-[22px] py-4 border-b border-[#e2e5f0]">
-              <h3 className="text-[15px] font-bold text-[#1a1d2e]">{results.length} Results</h3>
+              <h3 className="text-[15px] font-bold text-[#1a1d2e]">{results.length} {t('detail.results')}</h3>
             </div>
 
             {loadingResults ? (
               <div className="flex items-center justify-center py-12"><div className="w-6 h-6 border-4 border-primary border-t-transparent rounded-full animate-spin" /></div>
             ) : results.length === 0 ? (
-              <div className="p-12 text-center text-[#9196b0] text-sm">No results for this task.</div>
+              <div className="p-12 text-center text-[#9196b0] text-sm">{t('results.no_results')}</div>
             ) : (
               <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4 p-5">
                 {results.map(r => {
@@ -118,7 +119,7 @@ export default function Results() {
                         {data.username && <p className="text-[11px] text-[#9196b0] truncate">@{data.username}</p>}
                         {data.profile_link && (
                           <a href={data.profile_link} target="_blank" rel="noopener noreferrer" className="text-[10px] text-primary hover:underline">
-                            View Profile
+                            {t('friends.profile')}
                           </a>
                         )}
                       </div>

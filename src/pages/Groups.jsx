@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react'
 import { supabase } from '../lib/supabase'
 import PageHeader from '../components/PageHeader'
+import { t } from '../lib/i18n'
 
 export default function Groups() {
   const [groups, setGroups] = useState([])
@@ -24,23 +25,23 @@ export default function Groups() {
 
   return (
     <>
-      <PageHeader title="Facebook Groups">
-        <span className="text-sm text-[#9196b0] font-semibold">{groups.length} groups tracked</span>
+      <PageHeader title={t('groups.title')}>
+        <span className="text-sm text-[#9196b0] font-semibold">{groups.length} {t('nav.groups')}</span>
       </PageHeader>
 
       <div className="p-7">
         {groups.length === 0 ? (
           <div className="bg-white border border-[#e2e5f0] rounded-[14px] shadow-sm p-12 text-center text-[#9196b0] text-sm">
-            No groups tracked yet. Run a group sync task to populate this list.
+            {t('groups.no_groups')}
           </div>
         ) : (
           <div className="bg-white border border-[#e2e5f0] rounded-[14px] shadow-sm overflow-hidden">
             <table className="w-full">
               <thead>
                 <tr className="bg-[#f4f6fb]">
-                  <th className="text-left px-4 py-3 text-[10px] text-[#9196b0] uppercase tracking-[0.8px] font-bold">Group Name</th>
-                  <th className="text-left px-4 py-3 text-[10px] text-[#9196b0] uppercase tracking-[0.8px] font-bold">Members</th>
-                  <th className="text-left px-4 py-3 text-[10px] text-[#9196b0] uppercase tracking-[0.8px] font-bold">Role</th>
+                  <th className="text-left px-4 py-3 text-[10px] text-[#9196b0] uppercase tracking-[0.8px] font-bold">{t('groups.name')}</th>
+                  <th className="text-left px-4 py-3 text-[10px] text-[#9196b0] uppercase tracking-[0.8px] font-bold">{t('groups.members')}</th>
+                  <th className="text-left px-4 py-3 text-[10px] text-[#9196b0] uppercase tracking-[0.8px] font-bold">{t('groups.role')}</th>
                   <th className="text-left px-4 py-3 text-[10px] text-[#9196b0] uppercase tracking-[0.8px] font-bold">Link</th>
                 </tr>
               </thead>
@@ -56,18 +57,18 @@ export default function Groups() {
                     <td className="px-4 py-3.5">
                       {group.is_admin ? (
                         <span className="inline-flex items-center px-3 py-1 rounded-full text-[11px] font-semibold bg-primary/10 text-primary">
-                          Admin
+                          {t('groups.admin')}
                         </span>
                       ) : (
                         <span className="inline-flex items-center px-3 py-1 rounded-full text-[11px] font-semibold bg-[#f1f3f9] text-[#9196b0]">
-                          Member
+                          {t('groups.member')}
                         </span>
                       )}
                     </td>
                     <td className="px-4 py-3.5">
                       {group.group_url ? (
                         <a href={group.group_url} target="_blank" rel="noopener noreferrer" className="text-sm text-primary hover:underline font-semibold">
-                          Open on Facebook
+                          {t('groups.open')}
                         </a>
                       ) : (
                         <span className="text-sm text-[#9196b0]">-</span>
