@@ -42,6 +42,7 @@ export default function Tasks() {
   const [showModal, setShowModal] = useState(false)
   const [form, setForm] = useState({ task_name: '', process_url: '', max_request: 50, message: '' })
   const [templates, setTemplates] = useState([])
+  const [groups, setGroups] = useState([])
   const [saving, setSaving] = useState(false)
 
   useEffect(() => { loadTasks() }, [])
@@ -61,11 +62,29 @@ export default function Tasks() {
     setTemplates(data || [])
   }
 
+  async function loadGroups() {
+    const { data } = await supabase.from('fb_groups').select('*')
+    setGroups(data || [])
+  }
+
+  function refreshGroups() {
+    const EXT_ID = 'ehaendpolcffilhljadohefkgaaplfbg'
+    if (typeof chrome !== 'undefined' && chrome?.runtime?.sendMessage) {
+      chrome.runtime.sendMessage(EXT_ID, { type: 'FETCH_MANAGED_GROUPS' }, async () => {
+        await new Promise(r => setTimeout(r, 3000))
+        loadGroups()
+      })
+    }
+  }
+
   function openModal() {
     loadTemplates()
+    loadGroups()
     setForm({ task_name: '', process_url: '', max_request: 50, message: '' })
     setShowModal(true)
   }
+
+  const isGroupTask = ['leads-from-groups'].includes(form.task_name)
 
   async function createTask(e) {
     e.preventDefault()
@@ -325,14 +344,39 @@ export default function Tasks() {
               </div>
 
               <div>
-                <label className="block text-xs font-semibold text-[#9196b0] uppercase tracking-wide mb-1.5">{t('tasks.fb_url')}</label>
-                <input
-                  type="url"
-                  value={form.process_url}
-                  onChange={e => setForm({ ...form, process_url: e.target.value })}
-                  placeholder={t('tasks.fb_url_placeholder')}
-                  className="w-full border border-[#e2e5f0] rounded-lg px-3 py-2.5 text-sm text-[#1a1d2e] focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary"
-                />
+                <div className="flex items-center justify-between mb-1.5">
+                  <label className="block text-xs font-semibold text-[#9196b0] uppercase tracking-wide">
+                    {isGroupTask ? t('assistant.select_group') : t('tasks.fb_url')}
+                  </label>
+                  {isGroupTask && (
+                    <button type="button" onClick={refreshGroups}
+                      className="px-2.5 py-1 text-[10px] font-semibold bg-primary text-white rounded-lg hover:bg-primary-hover transition-colors flex items-center gap-1">
+                      <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round"><polyline points="23 4 23 10 17 10"/><path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"/></svg>
+                      {t('assistant.refresh')}
+                    </button>
+                  )}
+                </div>
+                {isGroupTask ? (
+                  <select
+                    value={form.process_url}
+                    onChange={e => setForm({ ...form, process_url: e.target.value })}
+                    required
+                    className="w-full border border-[#e2e5f0] rounded-lg px-3 py-2.5 text-sm text-[#1a1d2e] focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary"
+                  >
+                    <option value="">-- {t('assistant.select_group')} --</option>
+                    {groups.map(g => (
+                      <option key={g.id} value={`https://www.facebook.com/groups/${g.group_id}`}>{g.group_name}</option>
+                    ))}
+                  </select>
+                ) : (
+                  <input
+                    type="url"
+                    value={form.process_url}
+                    onChange={e => setForm({ ...form, process_url: e.target.value })}
+                    placeholder={t('tasks.fb_url_placeholder')}
+                    className="w-full border border-[#e2e5f0] rounded-lg px-3 py-2.5 text-sm text-[#1a1d2e] focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary"
+                  />
+                )}
               </div>
 
               <div>
