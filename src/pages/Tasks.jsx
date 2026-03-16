@@ -466,6 +466,15 @@ export default function Tasks() {
                 {/* Content Task: Posts laden + Post auswählen + filterFromType */}
                 {isContentTask && (
                   <>
+                    {/* Anzahl Posts */}
+                    <div className="mt-3">
+                      <label className="block text-xs font-semibold text-[#9196b0] uppercase tracking-wide mb-1.5">Anzahl Posts</label>
+                      <select value={form.maxPosts || 10} onChange={e => setForm({ ...form, maxPosts: Number(e.target.value) })}
+                        className="w-full border border-[#e2e5f0] rounded-lg px-3 py-2.5 text-sm text-[#1a1d2e] focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary">
+                        {[5, 10, 15, 20, 30, 50].map(n => <option key={n} value={n}>{n} Posts</option>)}
+                      </select>
+                    </div>
+
                     {/* Posts laden */}
                     <div className="mt-3">
                       <div className="flex items-center justify-between mb-1.5">
@@ -476,7 +485,7 @@ export default function Tasks() {
                           {fetchingPosts ? (
                             <span className="flex items-center gap-1.5">
                               <span className="w-3 h-3 border-2 border-white border-t-transparent rounded-full animate-spin" />
-                              Posts werden geladen...
+                              Lädt...
                             </span>
                           ) : 'Posts laden'}
                         </button>
@@ -511,37 +520,33 @@ export default function Tasks() {
                       )}
                     </div>
 
-                    {/* Anzahl Posts */}
-                    <div className="mt-3">
-                      <label className="block text-xs font-semibold text-[#9196b0] uppercase tracking-wide mb-1.5">Anzahl Posts laden</label>
-                      <select value={form.maxPosts || 10} onChange={e => setForm({ ...form, maxPosts: Number(e.target.value) })}
-                        className="w-full border border-[#e2e5f0] rounded-lg px-3 py-2.5 text-sm text-[#1a1d2e] focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary">
-                        {[5, 10, 15, 20, 30, 50].map(n => <option key={n} value={n}>{n} Posts</option>)}
-                      </select>
-                    </div>
-
-                    {/* Leads aus: Kommentare / Reaktionen / Beides */}
-                    <div className="mt-3">
-                      <label className="block text-xs font-semibold text-[#9196b0] uppercase tracking-wide mb-1.5">Leads aus</label>
-                      <div className="flex rounded-lg overflow-hidden border border-[#e2e5f0]">
-                        {[
-                          { value: 'comments', label: 'Kommentare' },
-                          { value: 'likes', label: 'Reaktionen' },
-                          { value: 'both', label: 'Beides' },
-                        ].map(opt => (
-                          <button key={opt.value} type="button"
-                            onClick={() => setForm({ ...form, filterFromType: opt.value })}
-                            className={`flex-1 py-2.5 text-sm font-semibold transition-colors ${(form.filterFromType || 'comments') === opt.value ? 'bg-primary text-white' : 'bg-white text-[#9196b0] hover:bg-gray-50'}`}>
-                            {opt.label}
-                          </button>
-                        ))}
-                      </div>
-                    </div>
+                    {/* Nur nach Post-Auswahl: weitere Einstellungen */}
+                    {form.process_url && (
+                      <>
+                        {/* Leads aus: Kommentare / Reaktionen / Beides */}
+                        <div className="mt-3">
+                          <label className="block text-xs font-semibold text-[#9196b0] uppercase tracking-wide mb-1.5">Leads aus</label>
+                          <div className="flex rounded-lg overflow-hidden border border-[#e2e5f0]">
+                            {[
+                              { value: 'comments', label: 'Kommentare' },
+                              { value: 'likes', label: 'Reaktionen' },
+                              { value: 'both', label: 'Beides' },
+                            ].map(opt => (
+                              <button key={opt.value} type="button"
+                                onClick={() => setForm({ ...form, filterFromType: opt.value })}
+                                className={`flex-1 py-2.5 text-sm font-semibold transition-colors ${(form.filterFromType || 'comments') === opt.value ? 'bg-primary text-white' : 'bg-white text-[#9196b0] hover:bg-gray-50'}`}>
+                                {opt.label}
+                              </button>
+                            ))}
+                          </div>
+                        </div>
+                      </>
+                    )}
                   </>
                 )}
               </div>
 
-              {isGroupTask && (
+              {(isGroupTask && (!isContentTask || form.process_url)) && (
                 <>
                   {/* Freundschaftsanfragen senden? */}
                   <div>
