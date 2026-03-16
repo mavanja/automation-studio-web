@@ -91,13 +91,30 @@ export default function Tasks() {
     setSaving(true)
     const { data: { user } } = await supabase.auth.getUser()
     const taskId = `${form.task_name}-${Date.now()}`
+    let groupId = ''
+    if (form.process_url?.includes('/groups/')) {
+      groupId = form.process_url.split('/groups/')[1]?.split('/')[0]?.split('?')[0] || ''
+    }
+    const taskMessage = {
+      processUrl: form.process_url,
+      groupId,
+      sendFriendRequests: form.sendFriendRequests !== false,
+      thingsInCommon: form.thingsInCommon || false,
+      mutualFriendCount: Number(form.mutualFriendCount) || 0,
+      targetKeywords: form.targetKeywords ? form.targetKeywords.split(',').map(k => k.trim()).filter(Boolean) : [],
+      avoidKeywords: form.avoidKeywords ? form.avoidKeywords.split(',').map(k => k.trim()).filter(Boolean) : [],
+      messageTemplateId: form.message || '',
+      country: '',
+      gender: '',
+      filterFromType: 'comments',
+    }
     const { error } = await supabase.from('tasks').insert({
       task_id: taskId,
       user_id: user.id,
       task_name: form.task_name,
       process_url: form.process_url,
       max_request: Number(form.max_request),
-      message: form.message,
+      message: taskMessage,
       status: 'pending',
       friend_request_sent: 0,
     })
@@ -178,18 +195,19 @@ export default function Tasks() {
         facebookUserId: fbUserId,
         userId: user?.id,
         groupId: groupId,
+        mutualFriendCount: task.message?.mutualFriendCount || 0,
         message: {
-          ...(task.message || {}),
           processUrl: task.process_url,
           groupId: groupId,
           subTask: subTaskType,
-          country: '',
-          gender: '',
-          targetKeywords: [],
-          avoidKeywords: [],
-          mutualFriendCount: 0,
-          thingsInCommon: false,
-          filterFromType: 'comments',
+          country: task.message?.country || '',
+          gender: task.message?.gender || '',
+          targetKeywords: task.message?.targetKeywords || [],
+          avoidKeywords: task.message?.avoidKeywords || [],
+          mutualFriendCount: task.message?.mutualFriendCount || 0,
+          thingsInCommon: task.message?.thingsInCommon || false,
+          sendFriendRequests: task.message?.sendFriendRequests !== false,
+          filterFromType: task.message?.filterFromType || 'comments',
         },
         messageTemplateId: '',
         accessToken: '',
