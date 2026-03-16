@@ -527,8 +527,9 @@ export default function Tasks() {
                                   </div>
                                 )}
                                 <div className={`flex gap-3 text-[10px] font-medium ${form.process_url === p.postUrl ? 'text-white/80' : 'text-[#9196b0]'}`}>
-                                  <span>{p.reactionCount || p.getLikes || 0} Reaktionen</span>
-                                  <span>{p.commentCount || parseInt(p.getCommentCount) || 0} Kommentare</span>
+                                  <span>{p.reactionCount || p.getLikes || 0} Reakt.</span>
+                                  <span>{p.commentCount || parseInt(p.getCommentCount) || 0} Komm.</span>
+                                  {(p.viewCount > 0 || p.postType === 'video') && <span>{p.viewCount || 0} Aufrufe</span>}
                                 </div>
                               </div>
                             </div>
