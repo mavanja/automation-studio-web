@@ -132,7 +132,7 @@ export default function Tasks() {
         // Final fetch
         const { data: final } = await supabase.from('task_results').select('result').eq('task_id', fetchTaskId)
         if (final?.length) {
-          setGroupPosts(final.map(r => typeof r.result === 'string' ? JSON.parse(r.result) : r.result).filter(p => p?.postUrl))
+          setGroupPosts(final.map(r => typeof r.result === 'string' ? JSON.parse(r.result) : r.result).filter(p => p?.postUrl).filter((p, i, arr) => arr.findIndex(x => x.postUrl === p.postUrl) === i))
         }
       }
     }, 3000)
