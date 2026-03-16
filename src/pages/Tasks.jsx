@@ -496,18 +496,22 @@ export default function Tasks() {
                           {groupPosts.map((p, idx) => (
                             <button key={idx} type="button"
                               onClick={() => setForm({ ...form, process_url: p.postUrl })}
-                              className={`w-full text-left px-3 py-2 rounded-lg text-xs transition-colors ${form.process_url === p.postUrl ? 'bg-primary text-white' : 'bg-[#f4f6fb] hover:bg-[#e8ebf4] text-[#1a1d2e]'}`}>
-                              <div className="flex items-center justify-between">
+                              className={`w-full text-left px-3 py-2.5 rounded-lg text-xs transition-colors ${form.process_url === p.postUrl ? 'bg-primary text-white' : 'bg-[#f4f6fb] hover:bg-[#e8ebf4] text-[#1a1d2e]'}`}>
+                              <div className="flex items-center justify-between mb-1">
                                 <span className="font-semibold">
                                   {p.postType === 'video' ? 'Video' : 'Post'} #{idx + 1}
                                 </span>
-                                <span className={`text-[10px] ${form.process_url === p.postUrl ? 'text-white/80' : 'text-[#9196b0]'}`}>
-                                  {p.getLikes ? `${p.getLikes} Reaktionen` : ''} {p.getCommentCount ? `| ${p.getCommentCount} Kommentare` : ''}
-                                </span>
+                                <div className={`flex gap-2 text-[10px] ${form.process_url === p.postUrl ? 'text-white/80' : 'text-[#9196b0]'}`}>
+                                  {p.getLikes && <span>{p.getLikes} Reaktionen</span>}
+                                  {p.getCommentCount && <span>{p.getCommentCount}</span>}
+                                  {!p.getLikes && !p.getCommentCount && <span>—</span>}
+                                </div>
                               </div>
-                              <div className={`text-[10px] mt-0.5 truncate ${form.process_url === p.postUrl ? 'text-white/70' : 'text-[#9196b0]'}`}>
-                                {p.postUrl}
-                              </div>
+                              {p.postText && (
+                                <div className={`text-[10px] truncate ${form.process_url === p.postUrl ? 'text-white/90' : 'text-[#1a1d2e]'}`}>
+                                  {p.postText}
+                                </div>
+                              )}
                             </button>
                           ))}
                         </div>
