@@ -510,37 +510,41 @@ export default function Tasks() {
                               className={`flex items-start gap-2.5 px-3 py-2.5 rounded-lg text-xs transition-colors cursor-pointer ${form.process_url === p.postUrl ? 'bg-primary text-white ring-2 ring-primary/40' : 'bg-[#f4f6fb] hover:bg-[#e8ebf4] text-[#1a1d2e]'}`}
                               onClick={() => setForm({ ...form, process_url: p.postUrl })}>
                               {/* Radio */}
-                              <div className="mt-0.5 flex-shrink-0">
-                                <div className={`w-4 h-4 rounded-full border-2 flex items-center justify-center ${form.process_url === p.postUrl ? 'border-white' : 'border-[#c0c4d4]'}`}>
-                                  {form.process_url === p.postUrl && <div className="w-2 h-2 rounded-full bg-white" />}
+                              <div className="mt-1 flex-shrink-0">
+                                <div className={`w-3.5 h-3.5 rounded-full border-2 flex items-center justify-center ${form.process_url === p.postUrl ? 'border-white' : 'border-[#c0c4d4]'}`}>
+                                  {form.process_url === p.postUrl && <div className="w-1.5 h-1.5 rounded-full bg-white" />}
                                 </div>
                               </div>
-                              {/* Image Preview */}
-                              {p.postImage && (
-                                <div className="flex-shrink-0 w-14 h-14 rounded-md overflow-hidden bg-gray-200">
-                                  <img src={p.postImage} alt="" className="w-full h-full object-cover" />
-                                </div>
-                              )}
+                              {/* Author Avatar */}
+                              <div className="flex-shrink-0">
+                                {p.authorImage ? (
+                                  <img src={p.authorImage} alt="" className="w-9 h-9 rounded-full object-cover" />
+                                ) : (
+                                  <div className={`w-9 h-9 rounded-full flex items-center justify-center text-[10px] font-bold ${form.process_url === p.postUrl ? 'bg-white/20 text-white' : 'bg-[#e2e5f0] text-[#9196b0]'}`}>
+                                    {(p.authorName || 'P')[0]}
+                                  </div>
+                                )}
+                              </div>
                               {/* Content */}
                               <div className="flex-1 min-w-0">
-                                <div className="flex items-center justify-between mb-0.5">
-                                  <span className="font-semibold">
-                                    {p.postType === 'video' ? 'Video' : 'Post'} #{idx + 1}
+                                <div className="flex items-center justify-between">
+                                  <span className="font-semibold text-[11px]">
+                                    {p.authorName || `${p.postType === 'video' ? 'Video' : 'Post'} #${idx + 1}`}
                                   </span>
                                   <a href={p.postUrl} target="_blank" rel="noopener noreferrer"
                                     onClick={e => e.stopPropagation()}
-                                    className={`text-[10px] underline ${form.process_url === p.postUrl ? 'text-white/70 hover:text-white' : 'text-primary/60 hover:text-primary'}`}>
+                                    className={`text-[10px] underline flex-shrink-0 ml-2 ${form.process_url === p.postUrl ? 'text-white/70 hover:text-white' : 'text-primary/60 hover:text-primary'}`}>
                                     ansehen
                                   </a>
                                 </div>
                                 {p.postText && (
-                                  <div className={`text-[10px] leading-relaxed line-clamp-2 mb-1 ${form.process_url === p.postUrl ? 'text-white/90' : 'text-[#555]'}`}>
+                                  <div className={`text-[10px] leading-relaxed line-clamp-2 mt-0.5 ${form.process_url === p.postUrl ? 'text-white/90' : 'text-[#555]'}`}>
                                     {p.postText}
                                   </div>
                                 )}
-                                <div className={`flex gap-3 text-[10px] font-medium ${form.process_url === p.postUrl ? 'text-white/80' : 'text-[#9196b0]'}`}>
-                                  <span>{p.reactionCount || p.getLikes || 0} Reakt.</span>
-                                  <span>{p.commentCount || parseInt(p.getCommentCount) || 0} Komm.</span>
+                                <div className={`flex gap-3 text-[10px] font-medium mt-1 ${form.process_url === p.postUrl ? 'text-white/80' : 'text-[#9196b0]'}`}>
+                                  <span>{p.reactionCount || 0} Reakt.</span>
+                                  <span>{p.commentCount || 0} Komm.</span>
                                   {(p.viewCount > 0 || p.postType === 'video') && <span>{p.viewCount || 0} Aufrufe</span>}
                                 </div>
                               </div>
