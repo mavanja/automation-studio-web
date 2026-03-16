@@ -84,8 +84,8 @@ export default function Tasks() {
     setShowModal(true)
   }
 
-  const isGroupTask = ['leads-from-groups'].includes(form.task_name)
-  const isContentTask = ['leads-from-content'].includes(form.task_name)
+  const isGroupTask = ['leads-from-groups', 'leads-from-content'].includes(form.task_name)
+  const isContentTask = form.task_name === 'leads-from-content'
 
 
   async function createTask(e) {
@@ -406,39 +406,24 @@ export default function Tasks() {
                   />
                 )}
 
-                {/* Content Task: Post URL + filterFromType */}
+                {/* Content Task: filterFromType */}
                 {isContentTask && (
-                  <>
-                    <div className="mt-3">
-                      <label className="block text-xs font-semibold text-[#9196b0] uppercase tracking-wide mb-1.5">Post-URL</label>
-                      <input
-                        type="url"
-                        value={form.process_url}
-                        onChange={e => setForm({ ...form, process_url: e.target.value })}
-                        placeholder="https://www.facebook.com/groups/.../posts/..."
-                        required
-                        className="w-full border border-[#e2e5f0] rounded-lg px-3 py-2.5 text-sm text-[#1a1d2e] focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary"
-                      />
-                      <p className="text-[10px] text-[#9196b0] mt-1">Gehe zum Post, klicke auf den Zeitstempel und kopiere den Link</p>
+                  <div>
+                    <label className="block text-xs font-semibold text-[#9196b0] uppercase tracking-wide mb-1.5">Leads aus</label>
+                    <div className="flex rounded-lg overflow-hidden border border-[#e2e5f0]">
+                      {[
+                        { value: 'comments', label: 'Kommentare' },
+                        { value: 'likes', label: 'Reaktionen' },
+                        { value: 'both', label: 'Beides' },
+                      ].map(opt => (
+                        <button key={opt.value} type="button"
+                          onClick={() => setForm({ ...form, filterFromType: opt.value })}
+                          className={`flex-1 py-2.5 text-sm font-semibold transition-colors ${(form.filterFromType || 'comments') === opt.value ? 'bg-primary text-white' : 'bg-white text-[#9196b0] hover:bg-gray-50'}`}>
+                          {opt.label}
+                        </button>
+                      ))}
                     </div>
-
-                    <div className="mt-3">
-                      <label className="block text-xs font-semibold text-[#9196b0] uppercase tracking-wide mb-1.5">Leads aus</label>
-                      <div className="flex rounded-lg overflow-hidden border border-[#e2e5f0]">
-                        {[
-                          { value: 'comments', label: 'Kommentare' },
-                          { value: 'likes', label: 'Reaktionen' },
-                          { value: 'both', label: 'Beides' },
-                        ].map(opt => (
-                          <button key={opt.value} type="button"
-                            onClick={() => setForm({ ...form, filterFromType: opt.value })}
-                            className={`flex-1 py-2.5 text-sm font-semibold transition-colors ${(form.filterFromType || 'comments') === opt.value ? 'bg-primary text-white' : 'bg-white text-[#9196b0] hover:bg-gray-50'}`}>
-                            {opt.label}
-                          </button>
-                        ))}
-                      </div>
-                    </div>
-                  </>
+                  </div>
                 )}
               </div>
 
@@ -456,8 +441,8 @@ export default function Tasks() {
                     </div>
                   </div>
 
-                  {/* Nur Mitglieder mit Gemeinsamkeiten? (nur für Gruppen-Tasks) */}
-                  {isGroupTask && <div>
+                  {/* Nur Mitglieder mit Gemeinsamkeiten? (nur für Gruppen-Tasks, nicht Content) */}
+                  {(isGroupTask && !isContentTask) && <div>
                     <label className="block text-xs font-semibold text-[#9196b0] uppercase tracking-wide mb-1.5">Nur Mitglieder mit Gemeinsamkeiten?</label>
                     <div className="flex rounded-lg overflow-hidden border border-[#e2e5f0]">
                       <button type="button" onClick={() => setForm({ ...form, thingsInCommon: true })}
