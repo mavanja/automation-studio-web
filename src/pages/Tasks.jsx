@@ -495,7 +495,7 @@ export default function Tasks() {
                         <div className="space-y-1.5 max-h-48 overflow-y-auto border border-[#e2e5f0] rounded-lg p-2">
                           {groupPosts.map((p, idx) => (
                             <div key={idx}
-                              className={`flex items-start gap-2 px-3 py-2.5 rounded-lg text-xs transition-colors cursor-pointer ${form.process_url === p.postUrl ? 'bg-primary text-white ring-2 ring-primary/40' : 'bg-[#f4f6fb] hover:bg-[#e8ebf4] text-[#1a1d2e]'}`}
+                              className={`flex items-start gap-2.5 px-3 py-2.5 rounded-lg text-xs transition-colors cursor-pointer ${form.process_url === p.postUrl ? 'bg-primary text-white ring-2 ring-primary/40' : 'bg-[#f4f6fb] hover:bg-[#e8ebf4] text-[#1a1d2e]'}`}
                               onClick={() => setForm({ ...form, process_url: p.postUrl })}>
                               {/* Radio */}
                               <div className="mt-0.5 flex-shrink-0">
@@ -503,27 +503,33 @@ export default function Tasks() {
                                   {form.process_url === p.postUrl && <div className="w-2 h-2 rounded-full bg-white" />}
                                 </div>
                               </div>
+                              {/* Image Preview */}
+                              {p.postImage && (
+                                <div className="flex-shrink-0 w-14 h-14 rounded-md overflow-hidden bg-gray-200">
+                                  <img src={p.postImage} alt="" className="w-full h-full object-cover" />
+                                </div>
+                              )}
                               {/* Content */}
                               <div className="flex-1 min-w-0">
                                 <div className="flex items-center justify-between mb-0.5">
                                   <span className="font-semibold">
                                     {p.postType === 'video' ? 'Video' : 'Post'} #{idx + 1}
                                   </span>
-                                  <div className={`flex gap-3 text-[10px] font-medium ${form.process_url === p.postUrl ? 'text-white/80' : 'text-[#9196b0]'}`}>
-                                    {p.getLikes && <span>{p.getLikes} Reakt.</span>}
-                                    {p.getCommentCount && <span>{p.getCommentCount}</span>}
-                                  </div>
+                                  <a href={p.postUrl} target="_blank" rel="noopener noreferrer"
+                                    onClick={e => e.stopPropagation()}
+                                    className={`text-[10px] underline ${form.process_url === p.postUrl ? 'text-white/70 hover:text-white' : 'text-primary/60 hover:text-primary'}`}>
+                                    ansehen
+                                  </a>
                                 </div>
                                 {p.postText && (
-                                  <div className={`text-[10px] leading-relaxed line-clamp-2 ${form.process_url === p.postUrl ? 'text-white/90' : 'text-[#555]'}`}>
+                                  <div className={`text-[10px] leading-relaxed line-clamp-2 mb-1 ${form.process_url === p.postUrl ? 'text-white/90' : 'text-[#555]'}`}>
                                     {p.postText}
                                   </div>
                                 )}
-                                <a href={p.postUrl} target="_blank" rel="noopener noreferrer"
-                                  onClick={e => e.stopPropagation()}
-                                  className={`inline-block mt-1 text-[10px] underline ${form.process_url === p.postUrl ? 'text-white/70 hover:text-white' : 'text-primary/70 hover:text-primary'}`}>
-                                  Post ansehen
-                                </a>
+                                <div className={`flex gap-3 text-[10px] font-medium ${form.process_url === p.postUrl ? 'text-white/80' : 'text-[#9196b0]'}`}>
+                                  <span>{p.reactionCount || p.getLikes || 0} Reaktionen</span>
+                                  <span>{p.commentCount || parseInt(p.getCommentCount) || 0} Kommentare</span>
+                                </div>
                               </div>
                             </div>
                           ))}
