@@ -112,7 +112,8 @@ export default function Tasks() {
     })
 
     // Open group page with fetchPostsUrl params
-    const groupUrl = `${form.selectedGroup}?userName=${fbUserName}&taskFor=fetchPostsUrl&taskId=${fetchTaskId}&ypwSource=t`
+    const sorting = form.postSorting || 'TOP_POSTS'
+    const groupUrl = `${form.selectedGroup}?sorting_setting=${sorting}&userName=${fbUserName}&taskFor=fetchPostsUrl&taskId=${fetchTaskId}&ypwSource=t`
     chrome.runtime.sendMessage(EXT_ID, { type: 'CREATE_TAB', data: { url: groupUrl, focusOnFb: true } })
 
     // Poll for results
@@ -466,6 +467,17 @@ export default function Tasks() {
                 {/* Content Task: Posts laden + Post auswählen + filterFromType */}
                 {isContentTask && (
                   <>
+                    {/* Sortierung */}
+                    <div className="mt-3">
+                      <label className="block text-xs font-semibold text-[#9196b0] uppercase tracking-wide mb-1.5">Posts sortieren nach</label>
+                      <select value={form.postSorting || 'TOP_POSTS'} onChange={e => setForm({ ...form, postSorting: e.target.value })}
+                        className="w-full border border-[#e2e5f0] rounded-lg px-3 py-2.5 text-sm text-[#1a1d2e] focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary">
+                        <option value="TOP_POSTS">Relevanteste</option>
+                        <option value="RECENT_ACTIVITY">Neueste Aktivitäten</option>
+                        <option value="CHRONOLOGICAL">Neue Beiträge</option>
+                      </select>
+                    </div>
+
                     {/* Anzahl Posts */}
                     <div className="mt-3">
                       <label className="block text-xs font-semibold text-[#9196b0] uppercase tracking-wide mb-1.5">Anzahl Posts</label>
