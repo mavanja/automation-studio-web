@@ -511,6 +511,15 @@ export default function Tasks() {
                       )}
                     </div>
 
+                    {/* Anzahl Posts */}
+                    <div className="mt-3">
+                      <label className="block text-xs font-semibold text-[#9196b0] uppercase tracking-wide mb-1.5">Anzahl Posts laden</label>
+                      <select value={form.maxPosts || 10} onChange={e => setForm({ ...form, maxPosts: Number(e.target.value) })}
+                        className="w-full border border-[#e2e5f0] rounded-lg px-3 py-2.5 text-sm text-[#1a1d2e] focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary">
+                        {[5, 10, 15, 20, 30, 50].map(n => <option key={n} value={n}>{n} Posts</option>)}
+                      </select>
+                    </div>
+
                     {/* Leads aus: Kommentare / Reaktionen / Beides */}
                     <div className="mt-3">
                       <label className="block text-xs font-semibold text-[#9196b0] uppercase tracking-wide mb-1.5">Leads aus</label>
