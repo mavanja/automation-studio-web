@@ -44,6 +44,8 @@ export default function Tasks() {
   const [templates, setTemplates] = useState([])
   const [groups, setGroups] = useState([])
   const [saving, setSaving] = useState(false)
+  const [groupPosts, setGroupPosts] = useState([])
+  const [fetchingPosts, setFetchingPosts] = useState(false)
 
   useEffect(() => { loadTasks() }, [])
 
@@ -87,6 +89,54 @@ export default function Tasks() {
   const isGroupTask = ['leads-from-groups', 'leads-from-content'].includes(form.task_name)
   const isContentTask = form.task_name === 'leads-from-content'
 
+  async function fetchPostsFromGroup() {
+    if (!form.selectedGroup) return
+    setFetchingPosts(true)
+    setGroupPosts([])
+
+    const EXT_ID = 'ehaendpolcffilhljadohefkgaaplfbg'
+    const { data: { user } } = await supabase.auth.getUser()
+    const { data: profile } = await supabase.from('user_profiles').select('*').eq('user_id', user.id).maybeSingle()
+    const fbUserName = profile?.fb_user_name || profile?.fb_user_id || ''
+
+    // Create a temp task for post fetching
+    const fetchTaskId = `fetchPostsUrl-${Date.now()}`
+    await supabase.from('tasks').insert({
+      task_id: fetchTaskId,
+      user_id: user.id,
+      task_name: 'fetchPostsUrl',
+      process_url: form.selectedGroup,
+      max_request: 20,
+      message: { processUrl: form.selectedGroup },
+      status: 'inprogress',
+    })
+
+    // Open group page with fetchPostsUrl params
+    const groupUrl = `${form.selectedGroup}?userName=${fbUserName}&taskFor=fetchPostsUrl&taskId=${fetchTaskId}&ypwSource=t`
+    chrome.runtime.sendMessage(EXT_ID, { type: 'CREATE_TAB', data: { url: groupUrl, focusOnFb: true } })
+
+    // Poll for results
+    let attempts = 0
+    const poll = setInterval(async () => {
+      attempts++
+      const { data: results } = await supabase
+        .from('task_results').select('result').eq('task_id', fetchTaskId)
+      if (results?.length) {
+        const posts = results.map(r => typeof r.result === 'string' ? JSON.parse(r.result) : r.result).filter(p => p?.postUrl)
+        setGroupPosts(posts)
+      }
+      const { data: td } = await supabase.from('tasks').select('status').eq('task_id', fetchTaskId).maybeSingle()
+      if (td?.status === 'completed' || td?.status === 'stopped' || attempts >= 30) {
+        clearInterval(poll)
+        setFetchingPosts(false)
+        // Final fetch
+        const { data: final } = await supabase.from('task_results').select('result').eq('task_id', fetchTaskId)
+        if (final?.length) {
+          setGroupPosts(final.map(r => typeof r.result === 'string' ? JSON.parse(r.result) : r.result).filter(p => p?.postUrl))
+        }
+      }
+    }, 3000)
+  }
 
   async function createTask(e) {
     e.preventDefault()
@@ -386,9 +436,16 @@ export default function Tasks() {
                 </div>
                 {isGroupTask ? (
                   <select
-                    value={form.process_url}
-                    onChange={e => setForm({ ...form, process_url: e.target.value })}
-                    required
+                    value={isContentTask ? (form.selectedGroup || '') : form.process_url}
+                    onChange={e => {
+                      if (isContentTask) {
+                        setForm({ ...form, selectedGroup: e.target.value, process_url: '' })
+                        setGroupPosts([])
+                      } else {
+                        setForm({ ...form, process_url: e.target.value })
+                      }
+                    }}
+                    required={!isContentTask}
                     className="w-full border border-[#e2e5f0] rounded-lg px-3 py-2.5 text-sm text-[#1a1d2e] focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary"
                   >
                     <option value="">-- {t('assistant.select_group')} --</option>
@@ -406,29 +463,76 @@ export default function Tasks() {
                   />
                 )}
 
-                {/* Content Task: filterFromType */}
+                {/* Content Task: Posts laden + Post auswählen + filterFromType */}
                 {isContentTask && (
-                  <div>
-                    <label className="block text-xs font-semibold text-[#9196b0] uppercase tracking-wide mb-1.5">Leads aus</label>
-                    <div className="flex rounded-lg overflow-hidden border border-[#e2e5f0]">
-                      {[
-                        { value: 'comments', label: 'Kommentare' },
-                        { value: 'likes', label: 'Reaktionen' },
-                        { value: 'both', label: 'Beides' },
-                      ].map(opt => (
-                        <button key={opt.value} type="button"
-                          onClick={() => setForm({ ...form, filterFromType: opt.value })}
-                          className={`flex-1 py-2.5 text-sm font-semibold transition-colors ${(form.filterFromType || 'comments') === opt.value ? 'bg-primary text-white' : 'bg-white text-[#9196b0] hover:bg-gray-50'}`}>
-                          {opt.label}
+                  <>
+                    {/* Posts laden */}
+                    <div className="mt-3">
+                      <div className="flex items-center justify-between mb-1.5">
+                        <label className="block text-xs font-semibold text-[#9196b0] uppercase tracking-wide">Post auswählen</label>
+                        <button type="button" onClick={fetchPostsFromGroup}
+                          disabled={!form.selectedGroup || fetchingPosts}
+                          className="px-3 py-1.5 text-[10px] font-semibold bg-primary text-white rounded-lg hover:bg-primary-hover transition-colors disabled:opacity-50">
+                          {fetchingPosts ? (
+                            <span className="flex items-center gap-1.5">
+                              <span className="w-3 h-3 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                              Posts werden geladen...
+                            </span>
+                          ) : 'Posts laden'}
                         </button>
-                      ))}
+                      </div>
+
+                      {groupPosts.length > 0 ? (
+                        <div className="space-y-1.5 max-h-48 overflow-y-auto border border-[#e2e5f0] rounded-lg p-2">
+                          {groupPosts.map((p, idx) => (
+                            <button key={idx} type="button"
+                              onClick={() => setForm({ ...form, process_url: p.postUrl })}
+                              className={`w-full text-left px-3 py-2 rounded-lg text-xs transition-colors ${form.process_url === p.postUrl ? 'bg-primary text-white' : 'bg-[#f4f6fb] hover:bg-[#e8ebf4] text-[#1a1d2e]'}`}>
+                              <div className="flex items-center justify-between">
+                                <span className="font-semibold">
+                                  {p.postType === 'video' ? 'Video' : 'Post'} #{idx + 1}
+                                </span>
+                                <span className={`text-[10px] ${form.process_url === p.postUrl ? 'text-white/80' : 'text-[#9196b0]'}`}>
+                                  {p.getLikes ? `${p.getLikes} Reaktionen` : ''} {p.getCommentCount ? `| ${p.getCommentCount} Kommentare` : ''}
+                                </span>
+                              </div>
+                              <div className={`text-[10px] mt-0.5 truncate ${form.process_url === p.postUrl ? 'text-white/70' : 'text-[#9196b0]'}`}>
+                                {p.postUrl}
+                              </div>
+                            </button>
+                          ))}
+                        </div>
+                      ) : (
+                        <div className="border border-dashed border-[#e2e5f0] rounded-lg p-4 text-center">
+                          <p className="text-xs text-[#9196b0]">
+                            {fetchingPosts ? 'Posts werden aus der Gruppe geladen...' : 'Wähle eine Gruppe und klicke "Posts laden"'}
+                          </p>
+                        </div>
+                      )}
                     </div>
-                  </div>
+
+                    {/* Leads aus: Kommentare / Reaktionen / Beides */}
+                    <div className="mt-3">
+                      <label className="block text-xs font-semibold text-[#9196b0] uppercase tracking-wide mb-1.5">Leads aus</label>
+                      <div className="flex rounded-lg overflow-hidden border border-[#e2e5f0]">
+                        {[
+                          { value: 'comments', label: 'Kommentare' },
+                          { value: 'likes', label: 'Reaktionen' },
+                          { value: 'both', label: 'Beides' },
+                        ].map(opt => (
+                          <button key={opt.value} type="button"
+                            onClick={() => setForm({ ...form, filterFromType: opt.value })}
+                            className={`flex-1 py-2.5 text-sm font-semibold transition-colors ${(form.filterFromType || 'comments') === opt.value ? 'bg-primary text-white' : 'bg-white text-[#9196b0] hover:bg-gray-50'}`}>
+                            {opt.label}
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+                  </>
                 )}
               </div>
 
-              {/* Content-Tasks brauchen keine Gruppen-URL für process_url, sondern die Post-URL */}
-              {(isGroupTask || isContentTask) && (
+              {isGroupTask && (
                 <>
                   {/* Freundschaftsanfragen senden? */}
                   <div>
