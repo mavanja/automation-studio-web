@@ -494,25 +494,38 @@ export default function Tasks() {
                       {groupPosts.length > 0 ? (
                         <div className="space-y-1.5 max-h-48 overflow-y-auto border border-[#e2e5f0] rounded-lg p-2">
                           {groupPosts.map((p, idx) => (
-                            <button key={idx} type="button"
-                              onClick={() => setForm({ ...form, process_url: p.postUrl })}
-                              className={`w-full text-left px-3 py-2.5 rounded-lg text-xs transition-colors ${form.process_url === p.postUrl ? 'bg-primary text-white' : 'bg-[#f4f6fb] hover:bg-[#e8ebf4] text-[#1a1d2e]'}`}>
-                              <div className="flex items-center justify-between mb-1">
-                                <span className="font-semibold">
-                                  {p.postType === 'video' ? 'Video' : 'Post'} #{idx + 1}
-                                </span>
-                                <div className={`flex gap-2 text-[10px] ${form.process_url === p.postUrl ? 'text-white/80' : 'text-[#9196b0]'}`}>
-                                  {p.getLikes && <span>{p.getLikes} Reaktionen</span>}
-                                  {p.getCommentCount && <span>{p.getCommentCount}</span>}
-                                  {!p.getLikes && !p.getCommentCount && <span>—</span>}
+                            <div key={idx}
+                              className={`flex items-start gap-2 px-3 py-2.5 rounded-lg text-xs transition-colors cursor-pointer ${form.process_url === p.postUrl ? 'bg-primary text-white ring-2 ring-primary/40' : 'bg-[#f4f6fb] hover:bg-[#e8ebf4] text-[#1a1d2e]'}`}
+                              onClick={() => setForm({ ...form, process_url: p.postUrl })}>
+                              {/* Radio */}
+                              <div className="mt-0.5 flex-shrink-0">
+                                <div className={`w-4 h-4 rounded-full border-2 flex items-center justify-center ${form.process_url === p.postUrl ? 'border-white' : 'border-[#c0c4d4]'}`}>
+                                  {form.process_url === p.postUrl && <div className="w-2 h-2 rounded-full bg-white" />}
                                 </div>
                               </div>
-                              {p.postText && (
-                                <div className={`text-[10px] truncate ${form.process_url === p.postUrl ? 'text-white/90' : 'text-[#1a1d2e]'}`}>
-                                  {p.postText}
+                              {/* Content */}
+                              <div className="flex-1 min-w-0">
+                                <div className="flex items-center justify-between mb-0.5">
+                                  <span className="font-semibold">
+                                    {p.postType === 'video' ? 'Video' : 'Post'} #{idx + 1}
+                                  </span>
+                                  <div className={`flex gap-3 text-[10px] font-medium ${form.process_url === p.postUrl ? 'text-white/80' : 'text-[#9196b0]'}`}>
+                                    {p.getLikes && <span>{p.getLikes} Reakt.</span>}
+                                    {p.getCommentCount && <span>{p.getCommentCount}</span>}
+                                  </div>
                                 </div>
-                              )}
-                            </button>
+                                {p.postText && (
+                                  <div className={`text-[10px] leading-relaxed line-clamp-2 ${form.process_url === p.postUrl ? 'text-white/90' : 'text-[#555]'}`}>
+                                    {p.postText}
+                                  </div>
+                                )}
+                                <a href={p.postUrl} target="_blank" rel="noopener noreferrer"
+                                  onClick={e => e.stopPropagation()}
+                                  className={`inline-block mt-1 text-[10px] underline ${form.process_url === p.postUrl ? 'text-white/70 hover:text-white' : 'text-primary/70 hover:text-primary'}`}>
+                                  Post ansehen
+                                </a>
+                              </div>
+                            </div>
                           ))}
                         </div>
                       ) : (
