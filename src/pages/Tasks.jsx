@@ -598,43 +598,30 @@ export default function Tasks() {
                 </>
               )}
 
-              {/* Max. Freundschaftsanfragen — nur wenn Anfragen senden = Ja */}
+              {/* Nur wenn Freundschaftsanfragen = Ja */}
               {form.sendFriendRequests && isGroupTask && (
-                <div>
-                  <label className="block text-xs font-semibold text-[#9196b0] uppercase tracking-wide mb-1.5">Max. Freundschaftsanfragen</label>
-                  <select value={form.max_request} onChange={e => setForm({ ...form, max_request: e.target.value })}
-                    className="w-full border border-[#e2e5f0] rounded-lg px-3 py-2.5 text-sm text-[#1a1d2e] focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary">
-                    {[5, 10, 25, 50, 100, 150, 200, 300, 500].map(n => <option key={n} value={n}>{n}</option>)}
-                  </select>
-                </div>
-              )}
-
-              {/* Max. Leads — wenn keine Anfragen oder kein Gruppen-Task */}
-              {(!isGroupTask || !form.sendFriendRequests) && (
-                <div>
-                  <label className="block text-xs font-semibold text-[#9196b0] uppercase tracking-wide mb-1.5">Max. Leads</label>
-                  <select value={form.max_request} onChange={e => setForm({ ...form, max_request: e.target.value })}
-                    className="w-full border border-[#e2e5f0] rounded-lg px-3 py-2.5 text-sm text-[#1a1d2e] focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary">
-                    {[5, 10, 25, 50, 100, 150, 200, 300, 500].map(n => <option key={n} value={n}>{n}</option>)}
-                  </select>
-                </div>
-              )}
-
-              {/* Nachrichtenvorlage — nur wenn Freundschaftsanfragen senden = Ja */}
-              {form.sendFriendRequests && isGroupTask && (
-                <div>
-                  <label className="block text-xs font-semibold text-[#9196b0] uppercase tracking-wide mb-1.5">{t('tasks.template')}</label>
-                  <select
-                    value={form.message}
-                    onChange={e => setForm({ ...form, message: e.target.value })}
-                    className="w-full border border-[#e2e5f0] rounded-lg px-3 py-2.5 text-sm text-[#1a1d2e] focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary"
-                  >
-                    <option value="">{t('tasks.template_none')}</option>
-                    {templates.map(t => (
-                      <option key={t.id} value={t.template_body}>{t.template_name}</option>
-                    ))}
-                  </select>
-                </div>
+                <>
+                  <div>
+                    <label className="block text-xs font-semibold text-[#9196b0] uppercase tracking-wide mb-1.5">Max. Freundschaftsanfragen</label>
+                    <select value={form.max_request} onChange={e => setForm({ ...form, max_request: e.target.value })}
+                      className="w-full border border-[#e2e5f0] rounded-lg px-3 py-2.5 text-sm text-[#1a1d2e] focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary">
+                      {[5, 10, 25, 50, 100, 150, 200, 300, 500].map(n => <option key={n} value={n}>{n}</option>)}
+                    </select>
+                  </div>
+                  <div>
+                    <label className="block text-xs font-semibold text-[#9196b0] uppercase tracking-wide mb-1.5">{t('tasks.template')}</label>
+                    <select
+                      value={form.message}
+                      onChange={e => setForm({ ...form, message: e.target.value })}
+                      className="w-full border border-[#e2e5f0] rounded-lg px-3 py-2.5 text-sm text-[#1a1d2e] focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary"
+                    >
+                      <option value="">{t('tasks.template_none')}</option>
+                      {templates.map(t => (
+                        <option key={t.id} value={t.template_body}>{t.template_name}</option>
+                      ))}
+                    </select>
+                  </div>
+                </>
               )}
 
               <div className="flex justify-end gap-3 pt-2">
