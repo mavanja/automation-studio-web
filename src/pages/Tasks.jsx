@@ -173,7 +173,15 @@ export default function Tasks() {
       groupId = task.process_url.split('/groups/')[1]?.split('/')[0]?.split('?')[0] || ''
     }
 
+    // Navigate to the correct members page based on settings
     let baseUrl = task.process_url || 'https://www.facebook.com'
+    if (task.task_name === 'leads-from-groups' && groupId) {
+      if (task.message?.thingsInCommon) {
+        baseUrl = `https://www.facebook.com/groups/${groupId}/members/things_in_common`
+      } else {
+        baseUrl = `https://www.facebook.com/groups/${groupId}/members`
+      }
+    }
     const taskUrl = baseUrl + (baseUrl.includes('?') ? '&' : '?') + 'ypwSource=t'
 
     const taskData = {
