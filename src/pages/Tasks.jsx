@@ -44,6 +44,8 @@ export default function Tasks() {
   const [templates, setTemplates] = useState([])
   const [groups, setGroups] = useState([])
   const [saving, setSaving] = useState(false)
+  const [groupPosts, setGroupPosts] = useState([])
+  const [fetchingPosts, setFetchingPosts] = useState(false)
 
   useEffect(() => { loadTasks() }, [])
 
@@ -86,6 +88,69 @@ export default function Tasks() {
 
   const isGroupTask = ['leads-from-groups'].includes(form.task_name)
   const isContentTask = ['leads-from-content'].includes(form.task_name)
+
+  async function fetchPostsFromGroup() {
+    if (!form.selectedGroup) return
+    setFetchingPosts(true)
+    setGroupPosts([])
+
+    const EXT_ID = 'ehaendpolcffilhljadohefkgaaplfbg'
+    const { data: { user } } = await supabase.auth.getUser()
+    const { data: profile } = await supabase.from('user_profiles').select('*').eq('user_id', user.id).maybeSingle()
+    const fbUserName = profile?.fb_user_name || profile?.fb_user_id || ''
+
+    // Create a temporary task for fetching posts
+    const fetchTaskId = `fetchPostsUrl-${Date.now()}`
+    await supabase.from('tasks').insert({
+      task_id: fetchTaskId,
+      user_id: user.id,
+      task_name: 'fetchPostsUrl',
+      process_url: form.selectedGroup,
+      max_request: 20,
+      message: { processUrl: form.selectedGroup },
+      status: 'inprogress',
+    })
+
+    // Send CREATE_TAB to extension — navigates to group page with fetchPostsUrl params
+    const groupUrl = `${form.selectedGroup}?userName=${fbUserName}&taskFor=fetchPostsUrl&taskId=${fetchTaskId}&ypwSource=t`
+    if (typeof chrome !== 'undefined' && chrome?.runtime?.sendMessage) {
+      chrome.runtime.sendMessage(EXT_ID, {
+        type: 'CREATE_TAB',
+        data: { url: groupUrl, focusOnFb: true },
+      })
+    }
+
+    // Poll for results every 3s for up to 60s
+    let attempts = 0
+    const pollInterval = setInterval(async () => {
+      attempts++
+      const { data: results } = await supabase
+        .from('task_results')
+        .select('result')
+        .eq('task_id', fetchTaskId)
+        .order('created_at', { ascending: false })
+
+      if (results?.length) {
+        setGroupPosts(results.map(r => typeof r.result === 'string' ? JSON.parse(r.result) : r.result).filter(p => p?.postUrl))
+      }
+
+      // Check if task is done
+      const { data: taskData } = await supabase.from('tasks').select('status').eq('task_id', fetchTaskId).maybeSingle()
+      if (taskData?.status === 'completed' || taskData?.status === 'stopped' || attempts >= 20) {
+        clearInterval(pollInterval)
+        setFetchingPosts(false)
+        // Final fetch
+        const { data: finalResults } = await supabase
+          .from('task_results')
+          .select('result')
+          .eq('task_id', fetchTaskId)
+          .order('created_at', { ascending: false })
+        if (finalResults?.length) {
+          setGroupPosts(finalResults.map(r => typeof r.result === 'string' ? JSON.parse(r.result) : r.result).filter(p => p?.postUrl))
+        }
+      }
+    }, 3000)
+  }
 
   async function createTask(e) {
     e.preventDefault()
@@ -405,22 +470,43 @@ export default function Tasks() {
                   />
                 )}
 
-                {/* Content Task: Post URL (manual) */}
+                {/* Content Task: Fetch posts from group + select one */}
                 {isContentTask && (
                   <>
+                    {/* Posts laden Button */}
                     <div className="mt-3">
-                      <label className="block text-xs font-semibold text-[#9196b0] uppercase tracking-wide mb-1.5">Post-URL</label>
-                      <input
-                        type="url"
-                        value={form.process_url}
-                        onChange={e => setForm({ ...form, process_url: e.target.value })}
-                        placeholder="https://www.facebook.com/groups/.../posts/..."
-                        required
-                        className="w-full border border-[#e2e5f0] rounded-lg px-3 py-2.5 text-sm text-[#1a1d2e] focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary"
-                      />
-                      <p className="text-[10px] text-[#9196b0] mt-1">Klicke auf den Zeitstempel eines Posts und kopiere den Link</p>
+                      <div className="flex items-center justify-between mb-1.5">
+                        <label className="block text-xs font-semibold text-[#9196b0] uppercase tracking-wide">Post auswählen</label>
+                        <button type="button" onClick={() => fetchPostsFromGroup()}
+                          disabled={!form.selectedGroup || fetchingPosts}
+                          className="px-3 py-1 text-[10px] font-semibold bg-primary text-white rounded-lg hover:bg-primary-hover transition-colors flex items-center gap-1 disabled:opacity-50">
+                          {fetchingPosts ? 'Lädt...' : 'Posts laden'}
+                        </button>
+                      </div>
+                      {groupPosts.length > 0 ? (
+                        <select
+                          value={form.process_url}
+                          onChange={e => setForm({ ...form, process_url: e.target.value })}
+                          required
+                          className="w-full border border-[#e2e5f0] rounded-lg px-3 py-2.5 text-sm text-[#1a1d2e] focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary"
+                        >
+                          <option value="">-- Post wählen --</option>
+                          {groupPosts.map((p, idx) => (
+                            <option key={idx} value={p.postUrl}>
+                              {p.postType === 'video' ? '[Video]' : '[Post]'} {p.postUrl?.split('/posts/')[1]?.split('/')[0] || p.postUrl?.split('/videos/')[1]?.split('/')[0] || '...'} {p.getLikes ? `| ${p.getLikes} Reaktionen` : ''} {p.getCommentCount ? `| ${p.getCommentCount} Kommentare` : ''}
+                            </option>
+                          ))}
+                        </select>
+                      ) : (
+                        <div className="border border-dashed border-[#e2e5f0] rounded-lg p-4 text-center">
+                          <p className="text-xs text-[#9196b0]">
+                            {fetchingPosts ? 'Posts werden aus der Gruppe geladen...' : 'Wähle eine Gruppe und klicke "Posts laden"'}
+                          </p>
+                        </div>
+                      )}
                     </div>
 
+                    {/* Filter: Kommentare / Reaktionen / Beides */}
                     <div className="mt-3">
                       <label className="block text-xs font-semibold text-[#9196b0] uppercase tracking-wide mb-1.5">Leads aus</label>
                       <div className="flex rounded-lg overflow-hidden border border-[#e2e5f0]">
