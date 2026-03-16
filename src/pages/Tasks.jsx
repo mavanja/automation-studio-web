@@ -629,8 +629,8 @@ export default function Tasks() {
                 </>
               )}
 
-              {/* Nur wenn Freundschaftsanfragen = Ja */}
-              {form.sendFriendRequests && isGroupTask && (
+              {/* Nur wenn Freundschaftsanfragen = Ja UND bei Content-Tasks nur nach Post-Auswahl */}
+              {form.sendFriendRequests && isGroupTask && (!isContentTask || form.process_url) && (
                 <>
                   <div>
                     <label className="block text-xs font-semibold text-[#9196b0] uppercase tracking-wide mb-1.5">Max. Freundschaftsanfragen</label>
