@@ -85,6 +85,7 @@ export default function Tasks() {
   }
 
   const isGroupTask = ['leads-from-groups'].includes(form.task_name)
+  const isContentTask = ['leads-from-content'].includes(form.task_name)
 
   async function createTask(e) {
     e.preventDefault()
@@ -106,7 +107,7 @@ export default function Tasks() {
       messageTemplateId: form.message || '',
       country: '',
       gender: '',
-      filterFromType: 'comments',
+      filterFromType: form.filterFromType || 'comments',
     }
     const { error } = await supabase.from('tasks').insert({
       task_id: taskId,
@@ -372,9 +373,9 @@ export default function Tasks() {
               <div>
                 <div className="flex items-center justify-between mb-1.5">
                   <label className="block text-xs font-semibold text-[#9196b0] uppercase tracking-wide">
-                    {isGroupTask ? t('assistant.select_group') : t('tasks.fb_url')}
+                    {(isGroupTask || isContentTask) ? t('assistant.select_group') : t('tasks.fb_url')}
                   </label>
-                  {isGroupTask && (
+                  {(isGroupTask || isContentTask) && (
                     <button type="button" onClick={refreshGroups}
                       className="px-2.5 py-1 text-[10px] font-semibold bg-primary text-white rounded-lg hover:bg-primary-hover transition-colors flex items-center gap-1">
                       <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round"><polyline points="23 4 23 10 17 10"/><path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"/></svg>
@@ -382,10 +383,10 @@ export default function Tasks() {
                     </button>
                   )}
                 </div>
-                {isGroupTask ? (
+                {(isGroupTask || isContentTask) ? (
                   <select
-                    value={form.process_url}
-                    onChange={e => setForm({ ...form, process_url: e.target.value })}
+                    value={form.selectedGroup || form.process_url}
+                    onChange={e => setForm({ ...form, selectedGroup: e.target.value, process_url: e.target.value })}
                     required
                     className="w-full border border-[#e2e5f0] rounded-lg px-3 py-2.5 text-sm text-[#1a1d2e] focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary"
                   >
@@ -403,9 +404,44 @@ export default function Tasks() {
                     className="w-full border border-[#e2e5f0] rounded-lg px-3 py-2.5 text-sm text-[#1a1d2e] focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary"
                   />
                 )}
+
+                {/* Content Task: Post URL (manual) */}
+                {isContentTask && (
+                  <>
+                    <div className="mt-3">
+                      <label className="block text-xs font-semibold text-[#9196b0] uppercase tracking-wide mb-1.5">Post-URL</label>
+                      <input
+                        type="url"
+                        value={form.process_url}
+                        onChange={e => setForm({ ...form, process_url: e.target.value })}
+                        placeholder="https://www.facebook.com/groups/.../posts/..."
+                        required
+                        className="w-full border border-[#e2e5f0] rounded-lg px-3 py-2.5 text-sm text-[#1a1d2e] focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary"
+                      />
+                      <p className="text-[10px] text-[#9196b0] mt-1">Klicke auf den Zeitstempel eines Posts und kopiere den Link</p>
+                    </div>
+
+                    <div className="mt-3">
+                      <label className="block text-xs font-semibold text-[#9196b0] uppercase tracking-wide mb-1.5">Leads aus</label>
+                      <div className="flex rounded-lg overflow-hidden border border-[#e2e5f0]">
+                        {[
+                          { value: 'comments', label: 'Kommentare' },
+                          { value: 'likes', label: 'Reaktionen' },
+                          { value: 'both', label: 'Beides' },
+                        ].map(opt => (
+                          <button key={opt.value} type="button"
+                            onClick={() => setForm({ ...form, filterFromType: opt.value })}
+                            className={`flex-1 py-2.5 text-sm font-semibold transition-colors ${(form.filterFromType || 'comments') === opt.value ? 'bg-primary text-white' : 'bg-white text-[#9196b0] hover:bg-gray-50'}`}>
+                            {opt.label}
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+                  </>
+                )}
               </div>
 
-              {isGroupTask && (
+              {(isGroupTask || isContentTask) && (
                 <>
                   {/* Freundschaftsanfragen senden? */}
                   <div>
@@ -418,8 +454,8 @@ export default function Tasks() {
                     </div>
                   </div>
 
-                  {/* Nur Mitglieder mit Gemeinsamkeiten? */}
-                  <div>
+                  {/* Nur Mitglieder mit Gemeinsamkeiten? (nur für Gruppen-Tasks) */}
+                  {isGroupTask && <div>
                     <label className="block text-xs font-semibold text-[#9196b0] uppercase tracking-wide mb-1.5">Nur Mitglieder mit Gemeinsamkeiten?</label>
                     <div className="flex rounded-lg overflow-hidden border border-[#e2e5f0]">
                       <button type="button" onClick={() => setForm({ ...form, thingsInCommon: true })}
@@ -427,7 +463,7 @@ export default function Tasks() {
                       <button type="button" onClick={() => setForm({ ...form, thingsInCommon: false })}
                         className={`flex-1 py-2.5 text-sm font-semibold transition-colors ${!form.thingsInCommon ? 'bg-primary text-white' : 'bg-white text-[#9196b0] hover:bg-gray-50'}`}>Nein</button>
                     </div>
-                  </div>
+                  </div>}
 
                   {/* Erweiterte Filter? */}
                   <div>
