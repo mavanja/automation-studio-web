@@ -58,6 +58,7 @@ const TRANSLATIONS = {
     // Task Types
     'tasktype.leads-from-groups': 'Leads aus Gruppen',
     'tasktype.leads-from-content': 'Leads aus Inhalten',
+    'tasktype.fetchPostsUrl': 'Posts sammeln',
     'tasktype.leads-from-peaple': 'Leads aus Personen',
     'tasktype.leads-from-suggestions': 'Leads aus Vorschlägen',
     'tasktype.broadcast-message': 'Broadcast-Nachricht',

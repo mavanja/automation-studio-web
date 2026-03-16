@@ -106,8 +106,8 @@ export default function Tasks() {
       user_id: user.id,
       task_name: 'fetchPostsUrl',
       process_url: form.selectedGroup,
-      max_request: 20,
-      message: { processUrl: form.selectedGroup },
+      max_request: Number(form.maxPosts) || 10,
+      message: { processUrl: form.selectedGroup, maxPosts: Number(form.maxPosts) || 10 },
       status: 'inprogress',
     })
 
