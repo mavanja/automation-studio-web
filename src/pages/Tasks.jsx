@@ -403,30 +403,45 @@ export default function Tasks() {
                     </div>
                   </div>
 
-                  {/* Min. gemeinsame Freunde */}
+                  {/* Erweiterte Filter? */}
                   <div>
-                    <label className="block text-xs font-semibold text-[#9196b0] uppercase tracking-wide mb-1.5">Mindestanzahl gemeinsamer Freunde</label>
-                    <select value={form.mutualFriendCount} onChange={e => setForm({ ...form, mutualFriendCount: Number(e.target.value) })}
-                      className="w-full border border-[#e2e5f0] rounded-lg px-3 py-2.5 text-sm text-[#1a1d2e] focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary">
-                      {[0, 1, 2, 3, 5, 10].map(n => <option key={n} value={n}>{n === 0 ? 'Kein Filter' : `Mindestens ${n}`}</option>)}
-                    </select>
+                    <label className="block text-xs font-semibold text-[#9196b0] uppercase tracking-wide mb-1.5">Erweiterte Filter?</label>
+                    <div className="flex rounded-lg overflow-hidden border border-[#e2e5f0]">
+                      <button type="button" onClick={() => setForm({ ...form, showAdvanced: true })}
+                        className={`flex-1 py-2.5 text-sm font-semibold transition-colors ${form.showAdvanced ? 'bg-primary text-white' : 'bg-white text-[#9196b0] hover:bg-gray-50'}`}>Ja</button>
+                      <button type="button" onClick={() => setForm({ ...form, showAdvanced: false, mutualFriendCount: 0, targetKeywords: '', avoidKeywords: '' })}
+                        className={`flex-1 py-2.5 text-sm font-semibold transition-colors ${!form.showAdvanced ? 'bg-primary text-white' : 'bg-white text-[#9196b0] hover:bg-gray-50'}`}>Nein</button>
+                    </div>
                   </div>
 
-                  {/* Ziel-Keywords */}
-                  <div>
-                    <label className="block text-xs font-semibold text-[#9196b0] uppercase tracking-wide mb-1.5">Ziel-Keywords (Profil muss enthalten)</label>
-                    <textarea value={form.targetKeywords} onChange={e => setForm({ ...form, targetKeywords: e.target.value })}
-                      placeholder="Keywords kommagetrennt, z.B.: Coach, Marketing, Unternehmer"
-                      className="w-full border border-[#e2e5f0] rounded-lg px-3 py-2.5 text-sm text-[#1a1d2e] focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary h-16 resize-none" />
-                  </div>
+                  {form.showAdvanced && (
+                    <>
+                      {/* Min. gemeinsame Freunde */}
+                      <div>
+                        <label className="block text-xs font-semibold text-[#9196b0] uppercase tracking-wide mb-1.5">Mindestanzahl gemeinsamer Freunde</label>
+                        <select value={form.mutualFriendCount} onChange={e => setForm({ ...form, mutualFriendCount: Number(e.target.value) })}
+                          className="w-full border border-[#e2e5f0] rounded-lg px-3 py-2.5 text-sm text-[#1a1d2e] focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary">
+                          {[0, 1, 2, 3, 5, 10].map(n => <option key={n} value={n}>{n === 0 ? 'Kein Filter' : `Mindestens ${n}`}</option>)}
+                        </select>
+                      </div>
 
-                  {/* Ausschluss-Keywords */}
-                  <div>
-                    <label className="block text-xs font-semibold text-[#9196b0] uppercase tracking-wide mb-1.5">Ausschluss-Keywords (Profil darf nicht enthalten)</label>
-                    <textarea value={form.avoidKeywords} onChange={e => setForm({ ...form, avoidKeywords: e.target.value })}
-                      placeholder="Keywords kommagetrennt, z.B.: Spam, MLM"
-                      className="w-full border border-[#e2e5f0] rounded-lg px-3 py-2.5 text-sm text-[#1a1d2e] focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary h-16 resize-none" />
-                  </div>
+                      {/* Ziel-Keywords */}
+                      <div>
+                        <label className="block text-xs font-semibold text-[#9196b0] uppercase tracking-wide mb-1.5">Ziel-Keywords (Profil muss enthalten)</label>
+                        <textarea value={form.targetKeywords} onChange={e => setForm({ ...form, targetKeywords: e.target.value })}
+                          placeholder="Keywords kommagetrennt, z.B.: Coach, Marketing, Unternehmer"
+                          className="w-full border border-[#e2e5f0] rounded-lg px-3 py-2.5 text-sm text-[#1a1d2e] focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary h-16 resize-none" />
+                      </div>
+
+                      {/* Ausschluss-Keywords */}
+                      <div>
+                        <label className="block text-xs font-semibold text-[#9196b0] uppercase tracking-wide mb-1.5">Ausschluss-Keywords (Profil darf nicht enthalten)</label>
+                        <textarea value={form.avoidKeywords} onChange={e => setForm({ ...form, avoidKeywords: e.target.value })}
+                          placeholder="Keywords kommagetrennt, z.B.: Spam, MLM"
+                          className="w-full border border-[#e2e5f0] rounded-lg px-3 py-2.5 text-sm text-[#1a1d2e] focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary h-16 resize-none" />
+                      </div>
+                    </>
+                  )}
                 </>
               )}
 
