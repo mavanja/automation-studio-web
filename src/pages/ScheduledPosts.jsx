@@ -61,28 +61,36 @@ export default function ScheduledPosts() {
   useEffect(() => {
     load()
 
-    // Listen for progress messages relayed from background
-    const handler = (msg) => {
-      if (msg.type === 'FROM_BG_SCHEDULED_POST_PROGRESS') {
-        setProgress(msg.data?.message || '…')
-      } else if (msg.type === 'FROM_BG_SCHEDULED_POST_DONE') {
-        setProgress('Post erstellt! Kommentar wird gepostet…')
-      } else if (msg.type === 'FROM_BG_SCHEDULED_POST_COMMENT_DONE') {
-        setProgress('Fertig!')
-        setRunningId(null)
-        load()
-        setTimeout(() => setProgress(null), 3000)
-      } else if (msg.type === 'FROM_BG_SCHEDULED_POST_ERROR') {
-        setError(msg.data?.message || 'Unbekannter Fehler')
-        setRunningId(null)
-        setProgress(null)
-        load()
-      }
-    }
-    if (chrome?.runtime?.onMessage) {
-      chrome.runtime.onMessage.addListener(handler)
-      return () => chrome.runtime.onMessage.removeListener(handler)
-    }
+    // Live-updates via Supabase Realtime (background.js updates status in DB)
+    const channel = supabase
+      .channel('scheduled_post_comments_changes')
+      .on('postgres_changes', {
+        event: 'UPDATE',
+        schema: 'public',
+        table: 'scheduled_post_comments',
+      }, (payload) => {
+        const row = payload.new
+        if (row.status === 'posting') {
+          setProgress('Post wird erstellt…')
+        } else if (row.status === 'posted') {
+          setProgress('Post erstellt! Kommentar wird gepostet…')
+        } else if (row.status === 'commenting') {
+          setProgress('Kommentar wird gepostet…')
+        } else if (row.status === 'commented') {
+          setProgress('Fertig! ✓')
+          setRunningId(null)
+          load()
+          setTimeout(() => setProgress(null), 3000)
+        } else if (row.status === 'error') {
+          setError(row.error_message || 'Unbekannter Fehler')
+          setRunningId(null)
+          setProgress(null)
+          load()
+        }
+      })
+      .subscribe()
+
+    return () => supabase.removeChannel(channel)
   }, [load])
 
   const handleSave = async () => {
