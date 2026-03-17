@@ -160,6 +160,7 @@ export default function Tasks() {
       country: '',
       gender: '',
       filterFromType: form.filterFromType || 'comments',
+      selectedPosts: form.selectedPosts || [],
     }
     const { error } = await supabase.from('tasks').insert({
       task_id: taskId,
@@ -235,6 +236,10 @@ export default function Tasks() {
         baseUrl = `https://www.facebook.com/groups/${groupId}/members/`
       }
     }
+    // For content tasks, use first selected post URL
+    if (task.task_name === 'leads-from-content' && task.message?.selectedPosts?.length) {
+      baseUrl = task.message.selectedPosts[0]
+    }
     const taskUrl = baseUrl + (baseUrl.includes('?') ? '&' : '?') + 'ypwSource=t'
 
     const taskData = {
@@ -269,6 +274,7 @@ export default function Tasks() {
           thingsInCommon: task.message?.thingsInCommon || false,
           sendFriendRequests: task.message?.sendFriendRequests !== false,
           filterFromType: task.message?.filterFromType || 'comments',
+          selectedPosts: task.message?.selectedPosts || [],
         },
         messageTemplateId: '',
         accessToken: '',
@@ -504,53 +510,65 @@ export default function Tasks() {
                       </div>
 
                       {groupPosts.length > 0 ? (
-                        <div className="space-y-1.5 max-h-48 overflow-y-auto border border-[#e2e5f0] rounded-lg p-2">
-                          {groupPosts.map((p, idx) => (
-                            <div key={idx}
-                              className={`flex items-start gap-2.5 px-3 py-2.5 rounded-lg text-xs transition-colors cursor-pointer ${form.process_url === p.postUrl ? 'bg-primary text-white ring-2 ring-primary/40' : 'bg-[#f4f6fb] hover:bg-[#e8ebf4] text-[#1a1d2e]'}`}
-                              onClick={() => setForm({ ...form, process_url: p.postUrl })}>
-                              {/* Radio */}
-                              <div className="mt-1 flex-shrink-0">
-                                <div className={`w-3.5 h-3.5 rounded-full border-2 flex items-center justify-center ${form.process_url === p.postUrl ? 'border-white' : 'border-[#c0c4d4]'}`}>
-                                  {form.process_url === p.postUrl && <div className="w-1.5 h-1.5 rounded-full bg-white" />}
-                                </div>
-                              </div>
-                              {/* Author Avatar */}
-                              <div className="flex-shrink-0">
-                                {p.authorImage ? (
-                                  <img src={p.authorImage} alt="" className="w-9 h-9 rounded-full object-cover" />
-                                ) : (
-                                  <div className={`w-9 h-9 rounded-full flex items-center justify-center text-[10px] font-bold ${form.process_url === p.postUrl ? 'bg-white/20 text-white' : 'bg-[#e2e5f0] text-[#9196b0]'}`}>
-                                    {(p.authorName || 'P')[0]}
+                        <>
+                          {(form.selectedPosts?.length > 0) && (
+                            <div className="text-[10px] font-semibold text-primary mb-1">{form.selectedPosts.length} Post{form.selectedPosts.length > 1 ? 's' : ''} ausgewählt</div>
+                          )}
+                          <div className="space-y-1.5 max-h-48 overflow-y-auto border border-[#e2e5f0] rounded-lg p-2">
+                            {groupPosts.map((p, idx) => {
+                              const isSelected = (form.selectedPosts || []).includes(p.postUrl)
+                              return (
+                                <div key={idx}
+                                  className={`flex items-start gap-2.5 px-3 py-2.5 rounded-lg text-xs transition-colors cursor-pointer ${isSelected ? 'bg-primary text-white ring-2 ring-primary/40' : 'bg-[#f4f6fb] hover:bg-[#e8ebf4] text-[#1a1d2e]'}`}
+                                  onClick={() => {
+                                    const prev = form.selectedPosts || []
+                                    const next = isSelected ? prev.filter(u => u !== p.postUrl) : [...prev, p.postUrl]
+                                    setForm({ ...form, selectedPosts: next, process_url: next[0] || '' })
+                                  }}>
+                                  {/* Checkbox */}
+                                  <div className="mt-1 flex-shrink-0">
+                                    <div className={`w-3.5 h-3.5 rounded border flex items-center justify-center ${isSelected ? 'bg-white border-white' : 'border-[#c0c4d4]'}`}>
+                                      {isSelected && <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="#1877F2" strokeWidth="3.5" strokeLinecap="round" strokeLinejoin="round"><polyline points="20 6 9 17 4 12"/></svg>}
+                                    </div>
                                   </div>
-                                )}
-                              </div>
-                              {/* Content */}
-                              <div className="flex-1 min-w-0">
-                                <div className="flex items-center justify-between">
-                                  <span className="font-semibold text-[11px]">
-                                    {p.authorName || `${p.postType === 'video' ? 'Video' : 'Post'} #${idx + 1}`}
-                                  </span>
-                                  <a href={p.postUrl} target="_blank" rel="noopener noreferrer"
-                                    onClick={e => e.stopPropagation()}
-                                    className={`text-[10px] underline flex-shrink-0 ml-2 ${form.process_url === p.postUrl ? 'text-white/70 hover:text-white' : 'text-primary/60 hover:text-primary'}`}>
-                                    ansehen
-                                  </a>
-                                </div>
-                                {p.postText && (
-                                  <div className={`text-[10px] leading-relaxed line-clamp-2 mt-0.5 ${form.process_url === p.postUrl ? 'text-white/90' : 'text-[#555]'}`}>
-                                    {p.postText}
+                                  {/* Author Avatar */}
+                                  <div className="flex-shrink-0">
+                                    {p.authorImage ? (
+                                      <img src={p.authorImage} alt="" className="w-9 h-9 rounded-full object-cover" />
+                                    ) : (
+                                      <div className={`w-9 h-9 rounded-full flex items-center justify-center text-[10px] font-bold ${isSelected ? 'bg-white/20 text-white' : 'bg-[#e2e5f0] text-[#9196b0]'}`}>
+                                        {(p.authorName || 'P')[0]}
+                                      </div>
+                                    )}
                                   </div>
-                                )}
-                                <div className={`flex gap-3 text-[10px] font-medium mt-1 ${form.process_url === p.postUrl ? 'text-white/80' : 'text-[#9196b0]'}`}>
-                                  <span>{p.reactionCount || 0} Reakt.</span>
-                                  <span>{p.commentCount || 0} Komm.</span>
-                                  {(p.viewCount > 0 || p.postType === 'video') && <span>{p.viewCount || 0} Aufrufe</span>}
+                                  {/* Content */}
+                                  <div className="flex-1 min-w-0">
+                                    <div className="flex items-center justify-between">
+                                      <span className="font-semibold text-[11px]">
+                                        {p.authorName || `${p.postType === 'video' ? 'Video' : 'Post'} #${idx + 1}`}
+                                      </span>
+                                      <a href={p.postUrl} target="_blank" rel="noopener noreferrer"
+                                        onClick={e => e.stopPropagation()}
+                                        className={`text-[10px] underline flex-shrink-0 ml-2 ${isSelected ? 'text-white/70 hover:text-white' : 'text-primary/60 hover:text-primary'}`}>
+                                        ansehen
+                                      </a>
+                                    </div>
+                                    {p.postText && (
+                                      <div className={`text-[10px] leading-relaxed line-clamp-2 mt-0.5 ${isSelected ? 'text-white/90' : 'text-[#555]'}`}>
+                                        {p.postText}
+                                      </div>
+                                    )}
+                                    <div className={`flex gap-3 text-[10px] font-medium mt-1 ${isSelected ? 'text-white/80' : 'text-[#9196b0]'}`}>
+                                      <span>{p.reactionCount || 0} Reakt.</span>
+                                      <span>{p.commentCount || 0} Komm.</span>
+                                      {(p.viewCount > 0 || p.postType === 'video') && <span>{p.viewCount || 0} Aufrufe</span>}
+                                    </div>
+                                  </div>
                                 </div>
-                              </div>
-                            </div>
-                          ))}
-                        </div>
+                              )
+                            })}
+                          </div>
+                        </>
                       ) : (
                         <div className="border border-dashed border-[#e2e5f0] rounded-lg p-4 text-center">
                           <p className="text-xs text-[#9196b0]">
@@ -561,7 +579,7 @@ export default function Tasks() {
                     </div>
 
                     {/* Nur nach Post-Auswahl: weitere Einstellungen */}
-                    {form.process_url && (
+                    {(form.selectedPosts?.length > 0 || form.process_url) && (
                       <>
                         {/* Leads aus: Kommentare / Reaktionen / Beides */}
                         <div className="mt-3">
