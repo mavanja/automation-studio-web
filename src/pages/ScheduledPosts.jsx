@@ -133,7 +133,7 @@ export default function ScheduledPosts() {
       await send({
         type: 'CREATE_TAB',
         data: {
-          url:      `https://www.facebook.com/groups/${post.group_id}`,
+          url:      `https://www.facebook.com/groups/${post.group_id}?ypwSource=t`,
           taskType: 'CREATE_SCHEDULED_POST_WITH_COMMENT',
           pinned:   true,
           recordId:    post.id,
