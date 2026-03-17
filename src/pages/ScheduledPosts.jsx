@@ -130,16 +130,19 @@ export default function ScheduledPosts() {
     setProgress('Verbinde mit Facebook…')
     setError(null)
     try {
+      // Extract numeric group ID from full URL or plain ID
+      const rawId = post.group_id || ''
+      const groupId = rawId.replace(/^https?:\/\/(www\.)?facebook\.com\/groups\//i, '').replace(/[/?#].*$/, '')
       await send({
         type: 'CREATE_TAB',
         data: {
-          url:      `https://www.facebook.com/groups/${post.group_id}?ypwSource=t`,
+          url:      `https://www.facebook.com/groups/${groupId}?ypwSource=t`,
           taskType: 'CREATE_SCHEDULED_POST_WITH_COMMENT',
           pinned:   true,
           recordId:    post.id,
           commentText: post.comment_text,
           post: {
-            groupId:      post.group_id,
+            groupId:      groupId,
             postText:     post.post_text,
             imageURL:     post.image_url || null,
             postColor:    post.post_color || 'white',
