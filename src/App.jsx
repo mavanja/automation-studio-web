@@ -14,6 +14,7 @@ import Groups from './pages/Groups'
 import Friends from './pages/Friends'
 import Logs from './pages/Logs'
 import Settings from './pages/Settings'
+import ScheduledPosts from './pages/ScheduledPosts'
 
 export default function App() {
   const { user, loading, signIn, signOut } = useAuth()
@@ -42,6 +43,7 @@ export default function App() {
           <Route path="/broadcasts" element={<Broadcasts />} />
           <Route path="/groups" element={<Groups />} />
           <Route path="/friends" element={<Friends />} />
+          <Route path="/posts" element={<ScheduledPosts />} />
           <Route path="/logs" element={<Logs />} />
           <Route path="/settings" element={<Settings />} />
           <Route path="*" element={<Navigate to="/" replace />} />
