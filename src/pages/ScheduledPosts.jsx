@@ -1,8 +1,10 @@
-import React, { useState, useEffect, useCallback } from 'react'
+import React, { useState, useEffect, useCallback, useRef } from 'react'
 import { supabase } from '../lib/supabase'
 import PageHeader from '../components/PageHeader'
 import { t } from '../lib/i18n'
 import { useExtension } from '../hooks/useExtension'
+
+const SUPABASE_URL = 'https://rzwfhokwmuuypvrrhfjq.supabase.co'
 
 const STATUS_COLORS = {
   pending:    'bg-gray-100 text-gray-600',
@@ -46,6 +48,35 @@ export default function ScheduledPosts() {
   const [runningId, setRunningId] = useState(null)
   const [progress, setProgress]   = useState(null)
   const [error, setError]         = useState(null)
+  const [imageFile, setImageFile] = useState(null)
+  const [imagePreview, setImagePreview] = useState(null)
+  const [uploading, setUploading] = useState(false)
+  const fileInputRef = useRef(null)
+
+  const handleFileSelect = (e) => {
+    const file = e.target.files?.[0]
+    if (!file) return
+    setImageFile(file)
+    setImagePreview(URL.createObjectURL(file))
+    setForm(prev => ({ ...prev, image_url: '' }))
+  }
+
+  const clearImage = () => {
+    setImageFile(null)
+    setImagePreview(null)
+    setForm(prev => ({ ...prev, image_url: '' }))
+    if (fileInputRef.current) fileInputRef.current.value = ''
+  }
+
+  const uploadImage = async (file) => {
+    const ext = file.name.split('.').pop()
+    const path = `${Date.now()}_${Math.random().toString(36).slice(2, 8)}.${ext}`
+    const { error: uploadErr } = await supabase.storage
+      .from('post-images')
+      .upload(path, file, { contentType: file.type })
+    if (uploadErr) throw uploadErr
+    return `${SUPABASE_URL}/storage/v1/object/public/post-images/${path}`
+  }
 
   const load = useCallback(async () => {
     setLoading(true)
@@ -101,6 +132,15 @@ export default function ScheduledPosts() {
     setSaving(true)
     setError(null)
     try {
+      let imageUrl = form.image_url.trim() || null
+
+      // Upload file if selected
+      if (imageFile) {
+        setUploading(true)
+        imageUrl = await uploadImage(imageFile)
+        setUploading(false)
+      }
+
       const { data: { user } } = await supabase.auth.getUser()
       const { error: err } = await supabase.from('scheduled_post_comments').insert({
         user_id:      user?.id || 'unknown',
@@ -108,7 +148,7 @@ export default function ScheduledPosts() {
         group_name:   form.group_name.trim() || null,
         post_text:    form.post_text.trim(),
         comment_text: form.comment_text.trim(),
-        image_url:    form.image_url.trim() || null,
+        image_url:    imageUrl,
         post_color:   form.post_color,
         scheduled_at: form.scheduled_at || null,
         status:       'pending',
@@ -116,6 +156,7 @@ export default function ScheduledPosts() {
       if (err) throw err
       setShowForm(false)
       setForm(EMPTY)
+      clearImage()
       load()
     } catch (e) {
       setError(e.message)
@@ -238,20 +279,51 @@ export default function ScheduledPosts() {
                 className="w-full px-3 py-2 text-sm border border-[#e2e5f0] rounded-[8px] focus:outline-none focus:border-primary bg-[#f9fafb] resize-none" />
             </div>
 
-            <div className="grid grid-cols-2 gap-4">
-              <div className="space-y-1">
-                <label className="text-xs font-semibold text-[#5f647e]">Bild-URL (optional)</label>
-                <input value={form.image_url} onChange={f('image_url')}
-                  type="url" placeholder="https://…"
-                  className="w-full px-3 py-2 text-sm border border-[#e2e5f0] rounded-[8px] focus:outline-none focus:border-primary bg-[#f9fafb]" />
+            <div className="space-y-1">
+              <label className="text-xs font-semibold text-[#5f647e]">Bild (optional)</label>
+              <div className="flex items-center gap-3">
+                <input
+                  ref={fileInputRef}
+                  type="file"
+                  accept="image/*"
+                  onChange={handleFileSelect}
+                  className="hidden"
+                />
+                <button
+                  type="button"
+                  onClick={() => fileInputRef.current?.click()}
+                  className="px-4 py-2 text-sm border border-[#e2e5f0] rounded-[8px] hover:bg-[#f4f6fb] transition-colors text-[#5f647e]"
+                >
+                  Bild auswählen
+                </button>
+                {!imageFile && (
+                  <input
+                    value={form.image_url}
+                    onChange={f('image_url')}
+                    type="url"
+                    placeholder="oder URL eingeben: https://…"
+                    className="flex-1 px-3 py-2 text-sm border border-[#e2e5f0] rounded-[8px] focus:outline-none focus:border-primary bg-[#f9fafb]"
+                  />
+                )}
+                {imageFile && (
+                  <div className="flex items-center gap-2 text-sm text-[#5f647e]">
+                    <span className="truncate max-w-[200px]">{imageFile.name}</span>
+                    <button type="button" onClick={clearImage} className="text-red-400 hover:text-red-600 shrink-0">✕</button>
+                  </div>
+                )}
               </div>
-              <div className="space-y-1">
-                <label className="text-xs font-semibold text-[#5f647e]">Hintergrundfarbe</label>
-                <select value={form.post_color} onChange={f('post_color')}
-                  className="w-full px-3 py-2 text-sm border border-[#e2e5f0] rounded-[8px] focus:outline-none focus:border-primary bg-[#f9fafb]">
-                  {POST_COLORS.map(c => <option key={c.id} value={c.id}>{c.label}</option>)}
-                </select>
-              </div>
+              {imagePreview && (
+                <img src={imagePreview} alt="Vorschau" className="mt-2 rounded-[8px] max-h-40 object-cover border border-[#e2e5f0]" />
+              )}
+            </div>
+
+            <div className="space-y-1">
+              <label className="text-xs font-semibold text-[#5f647e]">Hintergrundfarbe</label>
+              <select value={form.post_color} onChange={f('post_color')}
+                className="w-full px-3 py-2 text-sm border border-[#e2e5f0] rounded-[8px] focus:outline-none focus:border-primary bg-[#f9fafb]">
+                {POST_COLORS.map(c => <option key={c.id} value={c.id}>{c.label}</option>)}
+              </select>
+              <p className="text-[11px] text-[#9196b0]">Nur für Text-Posts ohne Bild</p>
             </div>
 
             <div className="space-y-1">
@@ -267,7 +339,7 @@ export default function ScheduledPosts() {
             <div className="flex gap-3 pt-1">
               <button onClick={handleSave} disabled={saving}
                 className="flex-1 py-2.5 bg-primary hover:bg-primary-hover text-white rounded-[10px] text-sm font-semibold transition-colors disabled:opacity-50">
-                {saving ? 'Speichern…' : 'Speichern'}
+                {uploading ? 'Bild wird hochgeladen…' : saving ? 'Speichern…' : 'Speichern'}
               </button>
               <button onClick={() => { setShowForm(false); setForm(EMPTY); setError(null) }}
                 className="px-5 py-2.5 border border-[#e2e5f0] text-[#5f647e] rounded-[10px] text-sm hover:bg-[#f4f6fb] transition-colors">
@@ -332,6 +404,11 @@ function PostCard({ post, isRunning, onRun, onDelete }) {
               {new Date(post.created_at).toLocaleDateString('de-DE')}
             </span>
           </div>
+
+          {/* Image preview */}
+          {post.image_url && (
+            <img src={post.image_url} alt="" className="rounded-[8px] max-h-24 object-cover border border-[#e2e5f0] mb-2" />
+          )}
 
           {/* Post text */}
           <p className="text-sm text-[#1a1d2e] leading-relaxed line-clamp-2 mb-2">{post.post_text}</p>
