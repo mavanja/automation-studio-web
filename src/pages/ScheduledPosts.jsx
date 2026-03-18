@@ -53,6 +53,7 @@ export default function ScheduledPosts() {
   const [posts, setPosts]         = useState([])
   const [loading, setLoading]     = useState(true)
   const [showWizard, setShowWizard] = useState(false)
+  const [editingId, setEditingId] = useState(null)   // id of post being edited
   const [step, setStep]           = useState(1)
   const [form, setForm]           = useState(EMPTY)
   const [saving, setSaving]       = useState(false)
@@ -159,9 +160,7 @@ export default function ScheduledPosts() {
         imageUrl = await uploadImage(imageFile)
         setUploading(false)
       }
-      const { data: { user } } = await supabase.auth.getUser()
-      const { error: err } = await supabase.from('scheduled_post_comments').insert({
-        user_id:      user?.id || 'unknown',
+      const payload = {
         group_id:     form.group_id.trim(),
         group_name:   form.group_name.trim() || null,
         post_text:    form.post_text.trim(),
@@ -169,15 +168,26 @@ export default function ScheduledPosts() {
         image_url:    imageUrl,
         post_color:   form.post_color,
         scheduled_at: form.scheduled_at || null,
-        status:       'pending',
-      })
+      }
+      let err
+      if (editingId) {
+        ;({ error: err } = await supabase
+          .from('scheduled_post_comments')
+          .update({ ...payload, status: 'pending', updated_at: new Date().toISOString() })
+          .eq('id', editingId))
+      } else {
+        const { data: { user } } = await supabase.auth.getUser()
+        ;({ error: err } = await supabase
+          .from('scheduled_post_comments')
+          .insert({ ...payload, user_id: user?.id || 'unknown', status: 'pending' }))
+      }
       if (err) throw err
       setShowWizard(false)
+      setEditingId(null)
       setForm(EMPTY)
       setStep(1)
       setImageFile(null)
       setImagePreview(null)
-      load()
     } catch (e) {
       setError(e.message)
     } finally {
@@ -229,6 +239,7 @@ export default function ScheduledPosts() {
 
   const openWizard = () => {
     setShowWizard(true)
+    setEditingId(null)
     setStep(1)
     setForm(EMPTY)
     setImageFile(null)
@@ -236,8 +247,28 @@ export default function ScheduledPosts() {
     setError(null)
   }
 
+  const openEdit = (post) => {
+    setShowWizard(true)
+    setEditingId(post.id)
+    setStep(1)
+    setForm({
+      group_id:     post.group_id || '',
+      group_name:   post.group_name || '',
+      post_text:    post.post_text || '',
+      comment_text: post.comment_text || '',
+      image_url:    post.image_url || '',
+      post_color:   post.post_color || 'white',
+      scheduled_at: post.scheduled_at ? post.scheduled_at.slice(0, 16) : '',
+    })
+    setImageFile(null)
+    setImagePreview(post.image_url || null)
+    setError(null)
+    window.scrollTo({ top: 0, behavior: 'smooth' })
+  }
+
   const closeWizard = () => {
     setShowWizard(false)
+    setEditingId(null)
     setStep(1)
     setError(null)
   }
@@ -278,6 +309,7 @@ export default function ScheduledPosts() {
             {showWizard
               ? <><span>✕</span> Abbrechen</>
               : <><span className="text-lg leading-none font-light">+</span> Neuer Post</>}
+
           </button>
         </div>
 
@@ -290,6 +322,7 @@ export default function ScheduledPosts() {
             setStep={setStep}
             saving={saving}
             uploading={uploading}
+            isEditing={!!editingId}
             onSave={handleSave}
             onCancel={closeWizard}
             imageFile={imageFile}
@@ -308,7 +341,7 @@ export default function ScheduledPosts() {
         ) : posts.length === 0 ? (
           <EmptyState onNew={openWizard} />
         ) : (
-          <PostsTable posts={posts} runningId={runningId} onRun={handleRun} onDelete={handleDelete} />
+          <PostsTable posts={posts} runningId={runningId} onRun={handleRun} onDelete={handleDelete} onEdit={openEdit} />
         )}
       </div>
     </>
@@ -317,7 +350,7 @@ export default function ScheduledPosts() {
 
 // ─── Post Wizard ──────────────────────────────────────────────────────────────
 
-function PostWizard({ form, setForm, step, setStep, saving, uploading, onSave, onCancel, imageFile, setImageFile, imagePreview, setImagePreview, fileInputRef }) {
+function PostWizard({ form, setForm, step, setStep, saving, uploading, isEditing, onSave, onCancel, imageFile, setImageFile, imagePreview, setImagePreview, fileInputRef }) {
   const f = (k) => (e) => setForm(prev => ({ ...prev, [k]: e.target.value }))
 
   const canGoNext = () => {
@@ -418,7 +451,7 @@ function PostWizard({ form, setForm, step, setStep, saving, uploading, onSave, o
               disabled={saving || !canGoNext()}
               className="flex items-center gap-2 px-5 py-2.5 bg-primary hover:bg-primary-hover text-white rounded-[10px] text-sm font-semibold transition-all disabled:opacity-50 shadow-sm"
             >
-              {uploading ? 'Bild lädt…' : saving ? 'Speichert…' : '✓ Speichern'}
+              {uploading ? 'Bild lädt…' : saving ? 'Speichert…' : isEditing ? '✓ Änderungen speichern' : '✓ Speichern'}
             </button>
           )}
         </div>
@@ -1058,7 +1091,7 @@ function ToolbarBtn({ children, onClick, disabled, active }) {
 
 // ─── Posts Table ──────────────────────────────────────────────────────────────
 
-function PostsTable({ posts, runningId, onRun, onDelete }) {
+function PostsTable({ posts, runningId, onRun, onDelete, onEdit }) {
   return (
     <div className="bg-white border border-[#e2e5f0] rounded-[14px] overflow-hidden shadow-sm">
       <div className="px-5 py-3.5 border-b border-[#e2e5f0] bg-[#f9fafb] flex items-center gap-2">
@@ -1086,6 +1119,7 @@ function PostsTable({ posts, runningId, onRun, onDelete }) {
                 isRunning={runningId === post.id}
                 onRun={() => onRun(post)}
                 onDelete={() => onDelete(post.id)}
+                onEdit={() => onEdit(post)}
               />
             ))}
           </tbody>
@@ -1095,7 +1129,7 @@ function PostsTable({ posts, runningId, onRun, onDelete }) {
   )
 }
 
-function PostRow({ post, isRunning, onRun, onDelete }) {
+function PostRow({ post, isRunning, onRun, onDelete, onEdit }) {
   const canRun = post.status === 'pending' || post.status === 'error'
   const s = STATUS[post.status] || STATUS.pending
 
@@ -1152,15 +1186,25 @@ function PostRow({ post, isRunning, onRun, onDelete }) {
       <td className="px-5 py-3.5 align-top">
         <div className="flex items-center gap-2 justify-end">
           {canRun && (
-            <button
-              onClick={onRun}
-              disabled={isRunning}
-              className="flex items-center gap-1.5 px-3 py-1.5 bg-primary hover:bg-primary-hover text-white rounded-[7px] text-xs font-semibold transition-colors disabled:opacity-50 whitespace-nowrap"
-            >
-              {isRunning
-                ? <span className="w-3 h-3 border-2 border-white border-t-transparent rounded-full animate-spin" />
-                : <>▶ Starten</>}
-            </button>
+            <>
+              <button
+                onClick={onEdit}
+                disabled={isRunning}
+                className="p-1.5 text-[#9196b0] hover:text-[#1877f2] rounded-[6px] hover:bg-[#f0f4ff] transition-colors disabled:opacity-40"
+                title="Bearbeiten"
+              >
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
+              </button>
+              <button
+                onClick={onRun}
+                disabled={isRunning}
+                className="flex items-center gap-1.5 px-3 py-1.5 bg-primary hover:bg-primary-hover text-white rounded-[7px] text-xs font-semibold transition-colors disabled:opacity-50 whitespace-nowrap"
+              >
+                {isRunning
+                  ? <span className="w-3 h-3 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                  : <>▶ Starten</>}
+              </button>
+            </>
           )}
           <button
             onClick={onDelete}
