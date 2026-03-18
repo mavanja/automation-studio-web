@@ -394,38 +394,74 @@ function WizardStep1({ form, setForm, onChange }) {
   const [savedGroups, setSavedGroups] = useState([])
   const [loadingGroups, setLoadingGroups] = useState(true)
   const [showManual, setShowManual] = useState(false)
+  const [saving, setSaving] = useState(false)
+  const [saveMsg, setSaveMsg] = useState(null)
 
-  useEffect(() => {
+  const loadGroups = () => {
     supabase
       .from('fb_groups')
       .select('group_id, group_name, group_url, is_admin, member_count')
       .order('group_name', { ascending: true })
       .then(({ data }) => {
-        setSavedGroups(data || [])
+        // Deduplicate by normalized group_id
+        const seen = new Set()
+        const unique = (data || []).filter(g => {
+          const key = extractId(g.group_url || g.group_id)
+          if (seen.has(key)) return false
+          seen.add(key)
+          return true
+        })
+        setSavedGroups(unique)
         setLoadingGroups(false)
       })
-  }, [])
+  }
+
+  useEffect(() => { loadGroups() }, [])
+
+  const extractId = (raw) =>
+    (raw || '').replace(/^https?:\/\/(www\.)?facebook\.com\/groups\//i, '').replace(/[/?#].*$/, '').trim()
 
   const selectGroup = (g) => {
-    const rawId = (g.group_url || g.group_id || '')
-      .replace(/^https?:\/\/(www\.)?facebook\.com\/groups\//i, '')
-      .replace(/[/?#].*$/, '') || g.group_id
-    setForm(prev => ({ ...prev, group_id: rawId, group_name: g.group_name || '' }))
+    const id = extractId(g.group_url || g.group_id) || g.group_id
+    setForm(prev => ({ ...prev, group_id: id, group_name: g.group_name || '' }))
     setShowManual(false)
   }
 
   const isSelected = (g) => {
-    const rawId = (g.group_url || g.group_id || '')
-      .replace(/^https?:\/\/(www\.)?facebook\.com\/groups\//i, '')
-      .replace(/[/?#].*$/, '') || g.group_id
-    return form.group_id === rawId
+    const id = extractId(g.group_url || g.group_id) || g.group_id
+    return form.group_id === id
   }
+
+  const handleSaveGroup = async () => {
+    const rawId = form.group_id.trim()
+    if (!rawId) return
+    const id = extractId(rawId) || rawId
+    setSaving(true)
+    setSaveMsg(null)
+    const { data: { user } } = await supabase.auth.getUser()
+    const { error } = await supabase.from('fb_groups').upsert({
+      user_id:    user?.id,
+      group_id:   id,
+      group_name: form.group_name.trim() || null,
+      group_url:  rawId.startsWith('http') ? rawId : `https://www.facebook.com/groups/${id}`,
+    }, { onConflict: 'group_id,user_id' })
+    setSaving(false)
+    if (error) {
+      setSaveMsg({ ok: false, text: error.message })
+    } else {
+      setSaveMsg({ ok: true, text: 'Gespeichert ✓' })
+      loadGroups()
+      setTimeout(() => setSaveMsg(null), 2500)
+    }
+  }
+
+  const alreadySaved = savedGroups.some(g => isSelected(g))
 
   return (
     <div className="space-y-5">
       <div>
         <h3 className="text-[15px] font-bold text-[#1a1d2e] mb-1">Welche Gruppe?</h3>
-        <p className="text-sm text-[#9196b0]">Wähle eine gespeicherte Gruppe oder gib eine neue ID ein.</p>
+        <p className="text-sm text-[#9196b0]">Wähle eine gespeicherte Gruppe oder gib eine neue ein.</p>
       </div>
 
       {/* Saved groups */}
@@ -437,7 +473,7 @@ function WizardStep1({ form, setForm, onChange }) {
       ) : savedGroups.length > 0 ? (
         <div className="space-y-2">
           <label className="text-[11px] font-bold text-[#5f647e] uppercase tracking-wide">Gespeicherte Gruppen</label>
-          <div className="grid grid-cols-1 gap-2 max-h-[260px] overflow-y-auto pr-0.5">
+          <div className="grid grid-cols-1 gap-2 max-h-[240px] overflow-y-auto pr-0.5">
             {savedGroups.map((g) => {
               const selected = isSelected(g)
               return (
@@ -452,21 +488,15 @@ function WizardStep1({ form, setForm, onChange }) {
                   }`}
                 >
                   <div className={`w-9 h-9 rounded-[8px] flex items-center justify-center shrink-0 text-base ${
-                    selected ? 'bg-primary/10 text-primary' : 'bg-[#f4f6fb] text-[#9196b0]'
-                  }`}>
-                    👥
-                  </div>
+                    selected ? 'bg-primary/10' : 'bg-[#f4f6fb]'
+                  }`}>👥</div>
                   <div className="flex-1 min-w-0">
                     <div className={`text-sm font-semibold truncate ${selected ? 'text-primary' : 'text-[#1a1d2e]'}`}>
                       {g.group_name || g.group_id}
                     </div>
                     <div className="text-[11px] text-[#9196b0] flex items-center gap-2 mt-0.5">
-                      {g.is_admin && (
-                        <span className="bg-emerald-50 text-emerald-600 px-1.5 py-0.5 rounded-[4px] font-semibold text-[10px]">Admin</span>
-                      )}
-                      {g.member_count > 0 && (
-                        <span>{g.member_count.toLocaleString('de-DE')} Mitglieder</span>
-                      )}
+                      {g.is_admin && <span className="bg-emerald-50 text-emerald-600 px-1.5 py-0.5 rounded-[4px] font-semibold text-[10px]">Admin</span>}
+                      {g.member_count > 0 && <span>{g.member_count.toLocaleString('de-DE')} Mitglieder</span>}
                     </div>
                   </div>
                   {selected && (
@@ -482,7 +512,7 @@ function WizardStep1({ form, setForm, onChange }) {
       ) : null}
 
       {/* Manual input toggle */}
-      <div>
+      {savedGroups.length > 0 && (
         <button
           type="button"
           onClick={() => setShowManual(v => !v)}
@@ -491,13 +521,13 @@ function WizardStep1({ form, setForm, onChange }) {
           <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round">
             <polyline points={showManual ? '18 15 12 9 6 15' : '6 9 12 15 18 9'} />
           </svg>
-          {savedGroups.length > 0 ? (showManual ? 'Manuell ausblenden' : 'Manuell eingeben') : 'Gruppe manuell eingeben'}
+          {showManual ? 'Ausblenden' : '+ Neue Gruppe eingeben'}
         </button>
-      </div>
+      )}
 
       {/* Manual input fields */}
       {(showManual || savedGroups.length === 0) && (
-        <div className="space-y-4 p-4 bg-[#f9fafb] border border-[#e2e5f0] rounded-[12px]">
+        <div className="space-y-3 p-4 bg-[#f9fafb] border border-[#e2e5f0] rounded-[12px]">
           <div className="space-y-1.5">
             <label className="text-[11px] font-bold text-[#5f647e] uppercase tracking-wide">Gruppen-ID oder URL *</label>
             <input
@@ -507,7 +537,7 @@ function WizardStep1({ form, setForm, onChange }) {
               autoFocus={savedGroups.length === 0}
               className="w-full px-4 py-3 text-sm border border-[#e2e5f0] rounded-[10px] focus:outline-none focus:border-primary focus:ring-2 focus:ring-primary/10 bg-white transition-all"
             />
-            <p className="text-[11px] text-[#9196b0]">Die ID findest du in der Gruppen-URL: facebook.com/groups/<strong>ID</strong></p>
+            <p className="text-[11px] text-[#9196b0]">Die ID findest du in der URL: facebook.com/groups/<strong>ID</strong></p>
           </div>
           <div className="space-y-1.5">
             <label className="text-[11px] font-bold text-[#5f647e] uppercase tracking-wide">Gruppenname (optional)</label>
@@ -518,15 +548,31 @@ function WizardStep1({ form, setForm, onChange }) {
               className="w-full px-4 py-3 text-sm border border-[#e2e5f0] rounded-[10px] focus:outline-none focus:border-primary focus:ring-2 focus:ring-primary/10 bg-white transition-all"
             />
           </div>
+          {/* Save button */}
+          {form.group_id.trim() && (
+            <div className="flex items-center gap-3 pt-1">
+              <button
+                type="button"
+                onClick={handleSaveGroup}
+                disabled={saving || alreadySaved}
+                className="flex items-center gap-2 px-4 py-2 bg-[#f0f7ff] border border-[#c2d9ff] text-[#1877f2] rounded-[8px] text-xs font-semibold hover:bg-[#e0efff] transition-colors disabled:opacity-50"
+              >
+                {saving ? (
+                  <><div className="w-3 h-3 border-2 border-[#1877f2] border-t-transparent rounded-full animate-spin" /> Speichern…</>
+                ) : alreadySaved ? (
+                  <>✓ Bereits gespeichert</>
+                ) : (
+                  <><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round"><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"/><polyline points="17 21 17 13 7 13 7 21"/><polyline points="7 3 7 8 15 8"/></svg> Gruppe speichern</>
+                )}
+              </button>
+              {saveMsg && (
+                <span className={`text-xs font-medium ${saveMsg.ok ? 'text-emerald-600' : 'text-red-500'}`}>
+                  {saveMsg.text}
+                </span>
+              )}
+            </div>
+          )}
         </div>
-      )}
-
-      {/* Show selected group summary if selected from list */}
-      {form.group_id && !showManual && savedGroups.length > 0 && (
-        <p className="text-[11px] text-[#9196b0]">
-          Ausgewählt: <strong className="text-[#1a1d2e]">{form.group_name || form.group_id}</strong>
-          <button type="button" onClick={() => setForm(prev => ({ ...prev, group_id: '', group_name: '' }))} className="ml-2 text-red-400 hover:text-red-600">✕</button>
-        </p>
       )}
     </div>
   )
