@@ -930,31 +930,27 @@ function InlineAiTextarea({ value, onChange, placeholder, rows = 4, fieldType, c
             🪄 Generieren
           </ToolbarBtn>
 
-          {/* Text actions */}
-          {hasText && (
-            <>
-              <ToolbarBtn onClick={() => callAi('improve', value)} disabled={aiLoading}>✨ Verbessern</ToolbarBtn>
-              <ToolbarBtn onClick={() => callAi('shorten', value)} disabled={aiLoading}>✂️ Kürzen</ToolbarBtn>
-              <ToolbarBtn onClick={() => callAi('rephrase', value)} disabled={aiLoading}>🔄 Umformulieren</ToolbarBtn>
-              <div className="w-px h-3.5 bg-[#e2e5f0] mx-1" />
-              <div className="relative" ref={toneRef}>
-                <ToolbarBtn active={showTones} onClick={() => { setShowTones(v => !v); setShowPrompt(false); setShowEmoji(false) }} disabled={aiLoading}>
-                  🎭 Ton
-                  <svg width="9" height="9" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" className="ml-0.5"><polyline points="6 9 12 15 18 9"/></svg>
-                </ToolbarBtn>
-                {showTones && (
-                  <div className="absolute bottom-full left-0 mb-1 bg-white border border-[#e2e5f0] rounded-[10px] shadow-xl py-1 z-30 w-44 overflow-hidden">
-                    {TONE_ACTIONS.map(tone => (
-                      <button key={tone.id} type="button" onClick={() => { callAi(tone.id, value); setShowTones(false) }}
-                        className="w-full flex items-center gap-2.5 px-3 py-2.5 text-xs text-[#1a1d2e] hover:bg-[#f4f6fb] transition-colors text-left">
-                        <span>{tone.icon}</span> {tone.label}
-                      </button>
-                    ))}
-                  </div>
-                )}
+          {/* Text actions — always visible, disabled when no text */}
+          <ToolbarBtn onClick={() => callAi('improve', value)} disabled={aiLoading || !hasText}>✨ Verbessern</ToolbarBtn>
+          <ToolbarBtn onClick={() => callAi('shorten', value)} disabled={aiLoading || !hasText}>✂️ Kürzen</ToolbarBtn>
+          <ToolbarBtn onClick={() => callAi('rephrase', value)} disabled={aiLoading || !hasText}>🔄 Umformulieren</ToolbarBtn>
+          <div className="w-px h-3.5 bg-[#e2e5f0] mx-1" />
+          <div className="relative" ref={toneRef}>
+            <ToolbarBtn active={showTones} onClick={() => { setShowTones(v => !v); setShowPrompt(false); setShowEmoji(false) }} disabled={aiLoading || !hasText}>
+              🎭 Ton
+              <svg width="9" height="9" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" className="ml-0.5"><polyline points="6 9 12 15 18 9"/></svg>
+            </ToolbarBtn>
+            {showTones && (
+              <div className="absolute bottom-full left-0 mb-1 bg-white border border-[#e2e5f0] rounded-[10px] shadow-xl py-1 z-30 w-44 overflow-hidden">
+                {TONE_ACTIONS.map(tone => (
+                  <button key={tone.id} type="button" onClick={() => { callAi(tone.id, value); setShowTones(false) }}
+                    className="w-full flex items-center gap-2.5 px-3 py-2.5 text-xs text-[#1a1d2e] hover:bg-[#f4f6fb] transition-colors text-left">
+                    <span>{tone.icon}</span> {tone.label}
+                  </button>
+                ))}
               </div>
-            </>
-          )}
+            )}
+          </div>
 
           {aiLoading && (
             <div className="ml-auto flex items-center gap-1.5 text-xs text-[#1877f2]">
