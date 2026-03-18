@@ -46,6 +46,14 @@ const EMPTY = {
   comment_text: '', image_url: '', post_color: 'white', scheduled_at: '',
 }
 
+// Convert UTC ISO string → local datetime-local input value (YYYY-MM-DDTHH:mm)
+function toLocalDatetimeInput(iso) {
+  if (!iso) return ''
+  const d = new Date(iso)
+  const pad = n => String(n).padStart(2, '0')
+  return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`
+}
+
 // ─── Main Page ────────────────────────────────────────────────────────────────
 
 export default function ScheduledPosts() {
@@ -167,7 +175,7 @@ export default function ScheduledPosts() {
         comment_text: form.comment_text.trim(),
         image_url:    imageUrl,
         post_color:   form.post_color,
-        scheduled_at: form.scheduled_at || null,
+        scheduled_at: form.scheduled_at ? new Date(form.scheduled_at).toISOString() : null,
       }
       let err
       if (editingId) {
@@ -258,7 +266,7 @@ export default function ScheduledPosts() {
       comment_text: post.comment_text || '',
       image_url:    post.image_url || '',
       post_color:   post.post_color || 'white',
-      scheduled_at: post.scheduled_at ? post.scheduled_at.slice(0, 16) : '',
+      scheduled_at: toLocalDatetimeInput(post.scheduled_at),
     })
     setImageFile(null)
     setImagePreview(post.image_url || null)
