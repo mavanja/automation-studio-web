@@ -725,23 +725,44 @@ function SummaryRow({ label, value, truncate }) {
   )
 }
 
+// ─── Emoji Data ───────────────────────────────────────────────────────────────
+
+const EMOJI_CATS = [
+  { label: '😊', title: 'Smileys', emojis: ['😀','😃','😄','😁','😆','😅','🤣','😂','🙂','😊','😇','🥰','😍','🤩','😘','😋','😜','🤪','😎','🥳','🤗','😏','🤔','😐','😑','😶','🙄','😬','😔','😢','😭','😤','😠','😡','🤬','😈','💀','🤡','😷','🤒','🤕','🥴','😵','🤯','🥱','😴'] },
+  { label: '👍', title: 'Gesten', emojis: ['👍','👎','👊','✊','🤛','🤜','🤞','✌️','🤟','🤘','👌','🤏','👋','🙌','👏','🤝','🙏','💪','💯','☝️','👆','👇','👈','👉','🫶','❤️','🧡','💛','💚','💙','💜','🖤','🤍','💔','💕','💞','💓','💗','💖','💘','💝'] },
+  { label: '🔥', title: 'Symbole', emojis: ['🔥','✨','💫','⭐','🌟','💥','❗','❓','💡','🎉','🎊','🎁','🏆','🥇','🎯','🚀','✈️','🌈','🎵','🎶','📱','💻','📷','🎮','💰','💸','🛒','📦','🔑','✅','❌','⚠️','💬','📢','📣','🔔','🔕','♻️','🆕','🆙','🆒','🆓','🔝'] },
+  { label: '🌸', title: 'Natur', emojis: ['🌸','🌺','🌼','🌻','🌹','🌷','🍀','🌱','🌲','🌴','🌊','❄️','☀️','🌙','⭐','🌍','🐶','🐱','🦊','🐻','🐼','🦁','🐯','🐸','🦋','🐝','🌿','🍁','🍂','🌾','🍄','🌈','⛅','🌤️','🌧️','⚡','🌬️','💧','🌺','🎋'] },
+  { label: '🍕', title: 'Essen', emojis: ['🍕','🍔','🌮','🍜','🍱','🍰','🎂','🍭','🍫','🍩','🍪','🍺','☕','🍵','🥤','🍹','🥗','🍣','🥪','🧁','🍦','🥞','🧇','🥐','🍞','🧀','🥚','🥓','🍗','🍖','🥩','🍜','🍝','🥘','🍲','🥣','🫐','🍓','🍒','🍎','🍊','🍋','🍌','🍉','🍇'] },
+]
+
 // ─── Inline AI Textarea (Chatwoot-style) ──────────────────────────────────────
 
 function InlineAiTextarea({ value, onChange, placeholder, rows = 4, fieldType, context }) {
-  const [aiLoading, setAiLoading]     = useState(false)
-  const [aiResult, setAiResult]       = useState(null)
-  const [aiError, setAiError]         = useState(null)
-  const [showPrompt, setShowPrompt]   = useState(false)
-  const [promptText, setPromptText]   = useState('')
-  const [showTones, setShowTones]     = useState(false)
-  const promptRef = useRef(null)
-  const toneRef   = useRef(null)
+  const [aiLoading, setAiLoading]         = useState(false)
+  const [aiResult, setAiResult]           = useState(null)
+  const [aiResultText, setAiResultText]   = useState('')   // editable copy
+  const [aiError, setAiError]             = useState(null)
+  const [showPrompt, setShowPrompt]       = useState(false)
+  const [promptText, setPromptText]       = useState('')
+  const [referenceText, setReferenceText] = useState('')
+  const [showReference, setShowReference] = useState(false)
+  const [showTones, setShowTones]         = useState(false)
+  const [showEmoji, setShowEmoji]         = useState(false)
+  const [emojiCat, setEmojiCat]           = useState(0)
+  const promptRef    = useRef(null)
+  const toneRef      = useRef(null)
+  const emojiRef     = useRef(null)
+  const textareaRef  = useRef(null)
 
   const hasText = (value || '').trim().length > 0
+
+  // Sync editable copy when result arrives
+  useEffect(() => { if (aiResult) setAiResultText(aiResult) }, [aiResult])
 
   useEffect(() => {
     const handler = (e) => {
       if (toneRef.current && !toneRef.current.contains(e.target)) setShowTones(false)
+      if (emojiRef.current && !emojiRef.current.contains(e.target)) setShowEmoji(false)
     }
     document.addEventListener('mousedown', handler)
     return () => document.removeEventListener('mousedown', handler)
@@ -751,6 +772,7 @@ function InlineAiTextarea({ value, onChange, placeholder, rows = 4, fieldType, c
     setAiLoading(true)
     setAiError(null)
     setAiResult(null)
+    setAiResultText('')
     setShowPrompt(false)
     setShowTones(false)
     try {
@@ -762,12 +784,8 @@ function InlineAiTextarea({ value, onChange, placeholder, rows = 4, fieldType, c
       const token = session?.access_token || ANON_KEY
       const resp = await fetch(`${SUPABASE_URL}/functions/v1/ai-text-assist`, {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${token}`,
-          'apikey': ANON_KEY,
-        },
-        body: JSON.stringify({ action, text, context }),
+        headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}`, 'apikey': ANON_KEY },
+        body: JSON.stringify({ action, text, context, reference: referenceText.trim() || undefined }),
       })
       const data = await resp.json()
       if (!resp.ok) throw new Error(data.error || `Fehler ${resp.status}`)
@@ -787,14 +805,27 @@ function InlineAiTextarea({ value, onChange, placeholder, rows = 4, fieldType, c
   }
 
   const handleAccept = () => {
-    onChange(aiResult)
+    onChange(aiResultText)
     setAiResult(null)
+    setAiResultText('')
   }
 
   const togglePrompt = () => {
     setShowPrompt(v => !v)
     setShowTones(false)
+    setShowEmoji(false)
     if (!showPrompt) setTimeout(() => promptRef.current?.focus(), 50)
+  }
+
+  const insertEmoji = (emoji) => {
+    const ta = textareaRef.current
+    if (!ta) { onChange((value || '') + emoji); return }
+    const start = ta.selectionStart ?? (value || '').length
+    const end   = ta.selectionEnd   ?? (value || '').length
+    const next  = (value || '').substring(0, start) + emoji + (value || '').substring(end)
+    onChange(next)
+    setTimeout(() => { ta.focus(); ta.setSelectionRange(start + emoji.length, start + emoji.length) }, 0)
+    setShowEmoji(false)
   }
 
   return (
@@ -804,6 +835,7 @@ function InlineAiTextarea({ value, onChange, placeholder, rows = 4, fieldType, c
         aiLoading ? 'border-[#1877f2]/40' : 'border-[#e2e5f0] focus-within:border-[#1877f2]'
       }`}>
         <textarea
+          ref={textareaRef}
           value={value}
           onChange={(e) => onChange(e.target.value)}
           placeholder={placeholder}
@@ -811,49 +843,71 @@ function InlineAiTextarea({ value, onChange, placeholder, rows = 4, fieldType, c
           className="w-full px-4 py-3 text-sm bg-white resize-none focus:outline-none leading-relaxed"
         />
 
-        {/* AI Toolbar */}
+        {/* Toolbar */}
         <div className="flex items-center gap-0.5 px-3 py-2 bg-[#f9fafb] border-t border-[#f0f0f5]">
-          <span className="text-[10px] text-[#c4c7d6] font-bold mr-2 tracking-wider">AI</span>
+          {/* Emoji picker button */}
+          <div className="relative" ref={emojiRef}>
+            <ToolbarBtn active={showEmoji} onClick={() => { setShowEmoji(v => !v); setShowPrompt(false); setShowTones(false) }}>
+              😊
+            </ToolbarBtn>
+            {showEmoji && (
+              <div className="absolute bottom-full left-0 mb-1 bg-white border border-[#e2e5f0] rounded-[12px] shadow-xl z-40 w-[300px] overflow-hidden">
+                {/* Category tabs */}
+                <div className="flex border-b border-[#f0f0f5]">
+                  {EMOJI_CATS.map((cat, i) => (
+                    <button
+                      key={i}
+                      type="button"
+                      onClick={() => setEmojiCat(i)}
+                      title={cat.title}
+                      className={`flex-1 py-2 text-base transition-colors ${emojiCat === i ? 'bg-[#f0f7ff] border-b-2 border-[#1877f2]' : 'hover:bg-[#f9fafb]'}`}
+                    >
+                      {cat.label}
+                    </button>
+                  ))}
+                </div>
+                {/* Emoji grid */}
+                <div className="p-2 grid grid-cols-8 gap-0.5 max-h-[180px] overflow-y-auto">
+                  {EMOJI_CATS[emojiCat].emojis.map((e, i) => (
+                    <button
+                      key={i}
+                      type="button"
+                      onClick={() => insertEmoji(e)}
+                      className="w-8 h-8 flex items-center justify-center text-lg hover:bg-[#f0f7ff] rounded-[6px] transition-colors"
+                    >
+                      {e}
+                    </button>
+                  ))}
+                </div>
+              </div>
+            )}
+          </div>
+
+          <div className="w-px h-3.5 bg-[#e2e5f0] mx-1" />
+          <span className="text-[10px] text-[#c4c7d6] font-bold mr-1 tracking-wider">AI</span>
 
           {/* Generieren */}
-          <ToolbarBtn
-            active={showPrompt}
-            onClick={togglePrompt}
-            disabled={aiLoading}
-          >
+          <ToolbarBtn active={showPrompt} onClick={togglePrompt} disabled={aiLoading}>
             🪄 Generieren
           </ToolbarBtn>
 
-          {/* Text actions — only when text exists */}
+          {/* Text actions */}
           {hasText && (
             <>
-              <ToolbarBtn onClick={() => callAi('improve', value)} disabled={aiLoading}>
-                ✨ Verbessern
-              </ToolbarBtn>
-              <ToolbarBtn onClick={() => callAi('shorten', value)} disabled={aiLoading}>
-                ✂️ Kürzen
-              </ToolbarBtn>
-              <ToolbarBtn onClick={() => callAi('rephrase', value)} disabled={aiLoading}>
-                🔄 Umformulieren
-              </ToolbarBtn>
-
+              <ToolbarBtn onClick={() => callAi('improve', value)} disabled={aiLoading}>✨ Verbessern</ToolbarBtn>
+              <ToolbarBtn onClick={() => callAi('shorten', value)} disabled={aiLoading}>✂️ Kürzen</ToolbarBtn>
+              <ToolbarBtn onClick={() => callAi('rephrase', value)} disabled={aiLoading}>🔄 Umformulieren</ToolbarBtn>
               <div className="w-px h-3.5 bg-[#e2e5f0] mx-1" />
-
-              {/* Tone dropdown */}
               <div className="relative" ref={toneRef}>
-                <ToolbarBtn active={showTones} onClick={() => { setShowTones(v => !v); setShowPrompt(false) }} disabled={aiLoading}>
+                <ToolbarBtn active={showTones} onClick={() => { setShowTones(v => !v); setShowPrompt(false); setShowEmoji(false) }} disabled={aiLoading}>
                   🎭 Ton
                   <svg width="9" height="9" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" className="ml-0.5"><polyline points="6 9 12 15 18 9"/></svg>
                 </ToolbarBtn>
                 {showTones && (
                   <div className="absolute bottom-full left-0 mb-1 bg-white border border-[#e2e5f0] rounded-[10px] shadow-xl py-1 z-30 w-44 overflow-hidden">
                     {TONE_ACTIONS.map(tone => (
-                      <button
-                        key={tone.id}
-                        type="button"
-                        onClick={() => { callAi(tone.id, value); setShowTones(false) }}
-                        className="w-full flex items-center gap-2.5 px-3 py-2.5 text-xs text-[#1a1d2e] hover:bg-[#f4f6fb] transition-colors text-left"
-                      >
+                      <button key={tone.id} type="button" onClick={() => { callAi(tone.id, value); setShowTones(false) }}
+                        className="w-full flex items-center gap-2.5 px-3 py-2.5 text-xs text-[#1a1d2e] hover:bg-[#f4f6fb] transition-colors text-left">
                         <span>{tone.icon}</span> {tone.label}
                       </button>
                     ))}
@@ -863,7 +917,6 @@ function InlineAiTextarea({ value, onChange, placeholder, rows = 4, fieldType, c
             </>
           )}
 
-          {/* Loading spinner */}
           {aiLoading && (
             <div className="ml-auto flex items-center gap-1.5 text-xs text-[#1877f2]">
               <div className="w-3 h-3 border-2 border-[#1877f2] border-t-transparent rounded-full animate-spin" />
@@ -872,28 +925,41 @@ function InlineAiTextarea({ value, onChange, placeholder, rows = 4, fieldType, c
           )}
         </div>
 
-        {/* Generate prompt row */}
+        {/* Generate prompt area */}
         {showPrompt && !aiLoading && (
-          <div className="flex items-center gap-2 px-3 pb-2.5 pt-1 bg-[#f9fafb] border-t border-[#eef0f7]">
-            <input
-              ref={promptRef}
-              value={promptText}
-              onChange={(e) => setPromptText(e.target.value)}
-              onKeyDown={(e) => { if (e.key === 'Enter') handleGenerate(); if (e.key === 'Escape') setShowPrompt(false) }}
-              placeholder={fieldType === 'comment'
-                ? 'z.B. Einladender Kommentar der zum Mitmachen motiviert…'
-                : 'z.B. Willkommenspost für neue Mitglieder, motivierend…'}
-              className="flex-1 px-3 py-1.5 text-xs border border-[#e2e5f0] rounded-[6px] focus:outline-none focus:border-[#1877f2] bg-white"
-            />
-            <button
-              type="button"
-              onClick={handleGenerate}
-              disabled={!promptText.trim()}
-              className="px-3 py-1.5 bg-[#1877f2] hover:bg-[#1565c0] text-white rounded-[6px] text-xs font-semibold disabled:opacity-40 transition-colors shrink-0"
-            >
-              Generieren
+          <div className="px-3 pb-3 pt-2 bg-[#f9fafb] border-t border-[#eef0f7] space-y-2">
+            <div className="flex items-center gap-2">
+              <input
+                ref={promptRef}
+                value={promptText}
+                onChange={(e) => setPromptText(e.target.value)}
+                onKeyDown={(e) => { if (e.key === 'Enter') handleGenerate(); if (e.key === 'Escape') setShowPrompt(false) }}
+                placeholder={fieldType === 'comment' ? 'z.B. Einladender Kommentar der zum Mitmachen motiviert…' : 'z.B. Willkommenspost für neue Mitglieder, motivierend…'}
+                className="flex-1 px-3 py-1.5 text-xs border border-[#e2e5f0] rounded-[6px] focus:outline-none focus:border-[#1877f2] bg-white"
+              />
+              <button type="button" onClick={handleGenerate} disabled={!promptText.trim()}
+                className="px-3 py-1.5 bg-[#1877f2] hover:bg-[#1565c0] text-white rounded-[6px] text-xs font-semibold disabled:opacity-40 transition-colors shrink-0">
+                Generieren
+              </button>
+              <button type="button" onClick={() => setShowPrompt(false)} className="text-[#c4c7d6] hover:text-[#9196b0] text-sm">✕</button>
+            </div>
+
+            {/* Reference toggle */}
+            <button type="button" onClick={() => setShowReference(v => !v)}
+              className="flex items-center gap-1.5 text-[11px] text-[#9196b0] hover:text-primary transition-colors">
+              <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round"><path d="M21.44 11.05l-9.19 9.19a6 6 0 0 1-8.49-8.49l9.19-9.19a4 4 0 0 1 5.66 5.66l-9.2 9.19a2 2 0 0 1-2.83-2.83l8.49-8.48"/></svg>
+              {showReference ? 'Referenz ausblenden' : '📎 Referenz-Post hinzufügen'}
             </button>
-            <button type="button" onClick={() => setShowPrompt(false)} className="text-[#c4c7d6] hover:text-[#9196b0] text-sm leading-none">✕</button>
+
+            {showReference && (
+              <textarea
+                value={referenceText}
+                onChange={(e) => setReferenceText(e.target.value)}
+                placeholder="Füge hier einen Beispiel-Post ein, an dem sich die KI orientieren soll (Stil, Länge, Ton)…"
+                rows={3}
+                className="w-full px-3 py-2 text-xs border border-[#e2e5f0] rounded-[8px] focus:outline-none focus:border-[#1877f2] bg-white resize-none"
+              />
+            )}
           </div>
         )}
       </div>
@@ -906,29 +972,29 @@ function InlineAiTextarea({ value, onChange, placeholder, rows = 4, fieldType, c
         </div>
       )}
 
-      {/* AI Result Preview */}
+      {/* AI Result — editable */}
       {aiResult && (
         <div className="border border-[#c2d9ff] rounded-[12px] overflow-hidden bg-gradient-to-b from-[#f0f7ff] to-white">
           <div className="px-4 py-2.5 bg-[#f0f7ff] border-b border-[#c2d9ff] flex items-center gap-2">
             <span>✨</span>
             <span className="text-xs font-bold text-[#1877f2]">AI Vorschlag</span>
+            <span className="ml-auto text-[10px] text-[#9196b0]">Bearbeitbar</span>
           </div>
           <div className="px-4 py-3">
-            <p className="text-sm text-[#1a1d2e] leading-relaxed whitespace-pre-wrap">{aiResult}</p>
+            <textarea
+              value={aiResultText}
+              onChange={(e) => setAiResultText(e.target.value)}
+              rows={Math.max(3, (aiResultText.match(/\n/g) || []).length + 2)}
+              className="w-full text-sm text-[#1a1d2e] leading-relaxed resize-none focus:outline-none bg-transparent"
+            />
           </div>
           <div className="px-4 py-3 border-t border-[#e8efff] flex items-center gap-2">
-            <button
-              type="button"
-              onClick={handleAccept}
-              className="flex-1 py-2 bg-[#1877f2] hover:bg-[#1565c0] text-white rounded-[8px] text-xs font-semibold transition-colors"
-            >
+            <button type="button" onClick={handleAccept}
+              className="flex-1 py-2 bg-[#1877f2] hover:bg-[#1565c0] text-white rounded-[8px] text-xs font-semibold transition-colors">
               Übernehmen
             </button>
-            <button
-              type="button"
-              onClick={() => setAiResult(null)}
-              className="px-3 py-2 border border-[#e2e5f0] text-[#9196b0] rounded-[8px] text-xs hover:bg-red-50 hover:text-red-500 hover:border-red-200 transition-colors"
-            >
+            <button type="button" onClick={() => { setAiResult(null); setAiResultText('') }}
+              className="px-3 py-2 border border-[#e2e5f0] text-[#9196b0] rounded-[8px] text-xs hover:bg-red-50 hover:text-red-500 hover:border-red-200 transition-colors">
               ✕
             </button>
           </div>
