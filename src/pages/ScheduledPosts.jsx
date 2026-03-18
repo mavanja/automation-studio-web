@@ -401,9 +401,9 @@ function WizardStep1({ form, setForm, onChange }) {
     supabase
       .from('fb_groups')
       .select('group_id, group_name, group_url, is_admin, member_count')
+      .eq('saved_for_posts', true)
       .order('group_name', { ascending: true })
       .then(({ data }) => {
-        // Deduplicate by normalized group_id
         const seen = new Set()
         const unique = (data || []).filter(g => {
           const key = extractId(g.group_url || g.group_id)
@@ -440,10 +440,11 @@ function WizardStep1({ form, setForm, onChange }) {
     setSaveMsg(null)
     const { data: { user } } = await supabase.auth.getUser()
     const { error } = await supabase.from('fb_groups').upsert({
-      user_id:    user?.id,
-      group_id:   id,
-      group_name: form.group_name.trim() || null,
-      group_url:  rawId.startsWith('http') ? rawId : `https://www.facebook.com/groups/${id}`,
+      user_id:          user?.id,
+      group_id:         id,
+      group_name:       form.group_name.trim() || null,
+      group_url:        rawId.startsWith('http') ? rawId : `https://www.facebook.com/groups/${id}`,
+      saved_for_posts:  true,
     }, { onConflict: 'group_id,user_id' })
     setSaving(false)
     if (error) {
@@ -472,7 +473,6 @@ function WizardStep1({ form, setForm, onChange }) {
         </div>
       ) : savedGroups.length > 0 ? (
         <div className="space-y-2">
-          <label className="text-[11px] font-bold text-[#5f647e] uppercase tracking-wide">Gespeicherte Gruppen</label>
           <div className="grid grid-cols-1 gap-2 max-h-[240px] overflow-y-auto pr-0.5">
             {savedGroups.map((g) => {
               const selected = isSelected(g)
