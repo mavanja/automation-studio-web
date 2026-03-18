@@ -100,6 +100,27 @@ export default function ScheduledPosts() {
     return () => supabase.removeChannel(channel)
   }, [load])
 
+  // Auto-scheduler: every 30s check for due posts and run them
+  const runningIdRef = useRef(null)
+  useEffect(() => { runningIdRef.current = runningId }, [runningId])
+
+  useEffect(() => {
+    const check = () => {
+      if (!connected) return
+      if (runningIdRef.current) return  // one at a time
+      const now = new Date()
+      const due = posts.find(p =>
+        p.status === 'pending' &&
+        p.scheduled_at &&
+        new Date(p.scheduled_at) <= now
+      )
+      if (due) handleRun(due)
+    }
+    check()
+    const timer = setInterval(check, 30_000)
+    return () => clearInterval(timer)
+  }, [posts, connected]) // eslint-disable-line react-hooks/exhaustive-deps
+
   const uploadImage = async (file) => {
     const ext = file.name.split('.').pop()
     const path = `${Date.now()}_${Math.random().toString(36).slice(2, 8)}.${ext}`
