@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react'
 import { supabase } from '../lib/supabase'
 import PageHeader from '../components/PageHeader'
 import { t } from '../lib/i18n'
+import { useRealtimeTable } from '../hooks/useRealtimeTable'
 
 export default function Results() {
   const [tasks, setTasks] = useState([])
@@ -11,6 +12,17 @@ export default function Results() {
   const [loadingResults, setLoadingResults] = useState(false)
 
   useEffect(() => { loadTasks() }, [])
+
+  useRealtimeTable('tasks', {
+    onInsert: (row) => setTasks(prev => [row, ...prev]),
+    onUpdate: (row) => setTasks(prev => prev.map(t => t.id === row.id ? { ...t, ...row } : t)),
+    onDelete: (row) => setTasks(prev => prev.filter(t => t.id !== row.id)),
+  })
+  useRealtimeTable('task_results', {
+    onInsert: (row) => setResults(prev => [row, ...prev]),
+    onUpdate: (row) => setResults(prev => prev.map(r => r.id === row.id ? { ...r, ...row } : r)),
+    onDelete: (row) => setResults(prev => prev.filter(r => r.id !== row.id)),
+  })
 
   async function loadTasks() {
     const { data } = await supabase.from('tasks').select('task_id, task_name, created_at').order('created_at', { ascending: false })

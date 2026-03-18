@@ -2,12 +2,19 @@ import React, { useState, useEffect } from 'react'
 import { supabase } from '../lib/supabase'
 import PageHeader from '../components/PageHeader'
 import { t } from '../lib/i18n'
+import { useRealtimeTable } from '../hooks/useRealtimeTable'
 
 export default function Groups() {
   const [groups, setGroups] = useState([])
   const [loading, setLoading] = useState(true)
 
   useEffect(() => { load() }, [])
+
+  useRealtimeTable('fb_groups', {
+    onInsert: (row) => setGroups(prev => [row, ...prev]),
+    onUpdate: (row) => setGroups(prev => prev.map(g => g.id === row.id ? { ...g, ...row } : g)),
+    onDelete: (row) => setGroups(prev => prev.filter(g => g.id !== row.id)),
+  })
 
   async function load() {
     setLoading(true)

@@ -3,6 +3,7 @@ import { Link } from 'react-router-dom'
 import { supabase } from '../lib/supabase'
 import PageHeader from '../components/PageHeader'
 import { t } from '../lib/i18n'
+import { useRealtimeTable } from '../hooks/useRealtimeTable'
 
 const TASK_TYPES = [
   { group: 'Lead Generation', options: [
@@ -48,6 +49,12 @@ export default function Tasks() {
   const [fetchingPosts, setFetchingPosts] = useState(false)
 
   useEffect(() => { loadTasks() }, [])
+
+  useRealtimeTable('tasks', {
+    onInsert: (row) => setTasks(prev => [row, ...prev]),
+    onUpdate: (row) => setTasks(prev => prev.map(t => t.id === row.id ? { ...t, ...row } : t)),
+    onDelete: (row) => setTasks(prev => prev.filter(t => t.id !== row.id)),
+  })
 
   async function loadTasks() {
     setLoading(true)

@@ -4,6 +4,7 @@ import { supabase } from '../lib/supabase'
 import PageHeader from '../components/PageHeader'
 import StatCard from '../components/StatCard'
 import { t } from '../lib/i18n'
+import { useRealtimeTable } from '../hooks/useRealtimeTable'
 
 export default function Dashboard() {
   const [stats, setStats] = useState({})
@@ -12,6 +13,13 @@ export default function Dashboard() {
   const [loading, setLoading] = useState(true)
 
   useEffect(() => { load() }, [])
+
+  // Realtime: live update recent tasks list
+  useRealtimeTable('tasks', {
+    onInsert: (row) => setRecentTasks(prev => [row, ...prev].slice(0, 10)),
+    onUpdate: (row) => setRecentTasks(prev => prev.map(t => t.id === row.id ? { ...t, ...row } : t)),
+    onDelete: (row) => setRecentTasks(prev => prev.filter(t => t.id !== row.id)),
+  })
 
   async function load() {
     const [tasksRes, friendsRes, profileRes, groupsRes, resultsRes] = await Promise.all([

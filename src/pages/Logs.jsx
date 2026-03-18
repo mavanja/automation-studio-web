@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react'
 import { supabase } from '../lib/supabase'
 import PageHeader from '../components/PageHeader'
 import { t } from '../lib/i18n'
+import { useRealtimeTable } from '../hooks/useRealtimeTable'
 
 const TYPE_STYLES = {
   info: 'bg-blue-50 text-blue-600',
@@ -15,6 +16,12 @@ export default function Logs() {
   const [loading, setLoading] = useState(true)
 
   useEffect(() => { load() }, [])
+
+  useRealtimeTable('activity_logs', {
+    onInsert: (row) => setLogs(prev => [row, ...prev]),
+    onUpdate: (row) => setLogs(prev => prev.map(l => l.id === row.id ? { ...l, ...row } : l)),
+    onDelete: (row) => setLogs(prev => prev.filter(l => l.id !== row.id)),
+  })
 
   async function load() {
     setLoading(true)

@@ -2,12 +2,19 @@ import React, { useState, useEffect } from 'react'
 import { supabase } from '../lib/supabase'
 import PageHeader from '../components/PageHeader'
 import { t } from '../lib/i18n'
+import { useRealtimeTable } from '../hooks/useRealtimeTable'
 
 export default function Broadcasts() {
   const [lists, setLists] = useState([])
   const [loading, setLoading] = useState(true)
 
   useEffect(() => { load() }, [])
+
+  useRealtimeTable('broadcast_lists', {
+    onInsert: (row) => setLists(prev => [row, ...prev]),
+    onUpdate: (row) => setLists(prev => prev.map(l => l.id === row.id ? { ...l, ...row } : l)),
+    onDelete: (row) => setLists(prev => prev.filter(l => l.id !== row.id)),
+  })
 
   async function load() {
     setLoading(true)

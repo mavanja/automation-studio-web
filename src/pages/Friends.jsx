@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react'
 import { supabase } from '../lib/supabase'
 import PageHeader from '../components/PageHeader'
 import { t } from '../lib/i18n'
+import { useRealtimeTable } from '../hooks/useRealtimeTable'
 
 export default function Friends() {
   const [friends, setFriends] = useState([])
@@ -9,6 +10,12 @@ export default function Friends() {
   const [search, setSearch] = useState('')
 
   useEffect(() => { load() }, [])
+
+  useRealtimeTable('fb_friends', {
+    onInsert: (row) => setFriends(prev => [...prev, row].sort((a, b) => a.name?.localeCompare(b.name))),
+    onUpdate: (row) => setFriends(prev => prev.map(f => f.id === row.id ? { ...f, ...row } : f)),
+    onDelete: (row) => setFriends(prev => prev.filter(f => f.id !== row.id)),
+  })
 
   async function load() {
     setLoading(true)
