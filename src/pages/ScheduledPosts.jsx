@@ -536,6 +536,13 @@ function WizardStep1({ form, setForm, onChange }) {
     }
   }
 
+  const handleDeleteGroup = async (g, e) => {
+    e.stopPropagation()
+    await supabase.from('fb_groups').update({ saved_for_posts: false }).eq('group_id', g.group_id)
+    setSavedGroups(prev => prev.filter(x => x.group_id !== g.group_id))
+    if (isSelected(g)) setForm(prev => ({ ...prev, group_id: '', group_name: '' }))
+  }
+
   const alreadySaved = savedGroups.some(g => isSelected(g))
 
   return (
@@ -584,6 +591,14 @@ function WizardStep1({ form, setForm, onChange }) {
                       <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="3" strokeLinecap="round"><polyline points="20 6 9 17 4 12"/></svg>
                     </div>
                   )}
+                  <button
+                    type="button"
+                    onClick={(e) => handleDeleteGroup(g, e)}
+                    className="w-6 h-6 flex items-center justify-center rounded-full text-[#c4c7d6] hover:text-red-500 hover:bg-red-50 transition-colors shrink-0"
+                    title="Gruppe entfernen"
+                  >
+                    <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+                  </button>
                 </button>
               )
             })}
