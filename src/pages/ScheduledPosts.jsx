@@ -71,30 +71,48 @@ export default function ScheduledPosts() {
       .select('*')
       .order('created_at', { ascending: false })
       .limit(100)
-    setPosts(data || [])
+    const rows = data || []
+    setPosts(rows)
     setLoading(false)
+    // Restore running state after page refresh
+    const active = rows.find(p => p.status === 'posting' || p.status === 'commenting')
+    if (active) {
+      setRunningId(active.id)
+      setProgress(active.status === 'posting' ? 'Post wird erstellt…' : 'Kommentar wird gepostet…')
+    }
   }, [])
 
   useEffect(() => {
     load()
     const channel = supabase
-      .channel('scheduled_post_comments_changes')
-      .on('postgres_changes', { event: 'UPDATE', schema: 'public', table: 'scheduled_post_comments' }, (payload) => {
-        const row = payload.new
-        if (row.status === 'posting')    setProgress('Post wird erstellt…')
-        else if (row.status === 'posted')     setProgress('Post live! Kommentar folgt…')
-        else if (row.status === 'commenting') setProgress('Kommentar wird gepostet…')
-        else if (row.status === 'commented') {
+      .channel('scheduled_post_comments_live')
+      // INSERT → prepend to list
+      .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'scheduled_post_comments' }, ({ new: row }) => {
+        setPosts(prev => [row, ...prev])
+      })
+      // UPDATE → patch row in-place + update UI banners
+      .on('postgres_changes', { event: 'UPDATE', schema: 'public', table: 'scheduled_post_comments' }, ({ new: row }) => {
+        setPosts(prev => prev.map(p => p.id === row.id ? row : p))
+        if (row.status === 'posting') {
+          setRunningId(row.id)
+          setProgress('Post wird erstellt…')
+        } else if (row.status === 'posted') {
+          setProgress('Post live! Kommentar folgt…')
+        } else if (row.status === 'commenting') {
+          setProgress('Kommentar wird gepostet…')
+        } else if (row.status === 'commented') {
           setProgress('Fertig ✓')
           setRunningId(null)
-          load()
           setTimeout(() => setProgress(null), 3000)
         } else if (row.status === 'error') {
           setError(row.error_message || 'Unbekannter Fehler')
           setRunningId(null)
           setProgress(null)
-          load()
         }
+      })
+      // DELETE → remove from list
+      .on('postgres_changes', { event: 'DELETE', schema: 'public', table: 'scheduled_post_comments' }, ({ old: row }) => {
+        setPosts(prev => prev.filter(p => p.id !== row.id))
       })
       .subscribe()
     return () => supabase.removeChannel(channel)
@@ -206,7 +224,7 @@ export default function ScheduledPosts() {
   const handleDelete = async (id) => {
     if (!confirm('Eintrag löschen?')) return
     await supabase.from('scheduled_post_comments').delete().eq('id', id)
-    load()
+    // DELETE event via Realtime removes from list automatically
   }
 
   const openWizard = () => {
