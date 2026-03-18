@@ -43,7 +43,7 @@ const STEPS = [
 
 const EMPTY = {
   group_id: '', group_name: '', post_text: '',
-  comment_text: '', image_url: '', post_color: 'white', scheduled_at: '',
+  comment_text: '', image_url: '', post_color: 'white', scheduled_at: '', link_url: '',
 }
 
 // Convert UTC ISO string → local datetime-local input value (YYYY-MM-DDTHH:mm)
@@ -176,6 +176,7 @@ export default function ScheduledPosts() {
         image_url:    imageUrl,
         post_color:   form.post_color,
         scheduled_at: form.scheduled_at ? new Date(form.scheduled_at).toISOString() : null,
+        link_url:     form.link_url.trim() || null,
       }
       let err
       if (editingId) {
@@ -267,6 +268,7 @@ export default function ScheduledPosts() {
       image_url:    post.image_url || '',
       post_color:   post.post_color || 'white',
       scheduled_at: toLocalDatetimeInput(post.scheduled_at),
+      link_url:     post.link_url || '',
     })
     setImageFile(null)
     setImagePreview(post.image_url || null)
@@ -797,6 +799,18 @@ function WizardStep4({ form, onChange }) {
         <p className="text-[11px] text-[#9196b0]">Leer lassen = sofort wenn du auf "Starten" klickst</p>
       </div>
 
+      <div className="space-y-1.5">
+        <label className="text-[11px] font-bold text-[#5f647e] uppercase tracking-wide">Ziel-URL (optional)</label>
+        <input
+          value={form.link_url}
+          onChange={onChange('link_url')}
+          type="url"
+          placeholder="https://deine-website.de/anmeldung"
+          className="w-full px-4 py-3 text-sm border border-[#e2e5f0] rounded-[10px] focus:outline-none focus:border-primary bg-white"
+        />
+        <p className="text-[11px] text-[#9196b0]">Wenn angegeben: Klick auf das Bild im Facebook-Post leitet zu dieser URL weiter</p>
+      </div>
+
       <div className="bg-[#f9fafb] border border-[#e2e5f0] rounded-[12px] p-4 space-y-3">
         <p className="text-[11px] font-bold text-[#9196b0] uppercase tracking-wide">Zusammenfassung</p>
         <div className="space-y-2.5">
@@ -804,6 +818,7 @@ function WizardStep4({ form, onChange }) {
           <SummaryRow label="Post-Text" value={form.post_text} truncate />
           <SummaryRow label="Kommentar" value={form.comment_text} truncate />
           {form.image_url && <SummaryRow label="Bild" value="✓ Bild hochgeladen" />}
+          {form.link_url && <SummaryRow label="Ziel-URL" value={form.link_url} truncate />}
         </div>
       </div>
     </div>
@@ -1172,6 +1187,18 @@ function PostRow({ post, isRunning, onRun, onDelete, onEdit }) {
           >
             <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/><polyline points="15 3 21 3 21 9"/><line x1="10" y1="14" x2="21" y2="3"/></svg>
             Post öffnen
+          </a>
+        )}
+        {post.link_url && (
+          <a
+            href={`https://rzwfhokwmuuypvrrhfjq.supabase.co/functions/v1/post-preview?id=${post.id}`}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="inline-flex items-center gap-1 text-[10px] text-[#1877f2] hover:text-[#1565c0] font-semibold mt-1 hover:underline"
+            title="Diese URL in Facebook posten → Klick leitet zu deiner Website"
+          >
+            <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round"><path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"/><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"/></svg>
+            Preview-Link
           </a>
         )}
       </td>
