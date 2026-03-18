@@ -224,7 +224,7 @@ export default function ScheduledPosts() {
           post: {
             groupId, postText: post.post_text,
             imageURL:  post.link_url
-              ? `https://rzwfhokwmuuypvrrhfjq.supabase.co/functions/v1/post-preview?id=${post.id}`
+              ? `https://app.automation-studio.de/p/${post.id}`
               : (post.image_url || null),
             postColor: post.post_color || 'white',
             postLocation: 'group',
@@ -1209,7 +1209,7 @@ function PostRow({ post, isRunning, onRun, onDelete, onEdit }) {
         )}
         {post.link_url && (
           <a
-            href={`https://rzwfhokwmuuypvrrhfjq.supabase.co/functions/v1/post-preview?id=${post.id}`}
+            href={`https://app.automation-studio.de/p/${post.id}`}
             target="_blank"
             rel="noopener noreferrer"
             className="inline-flex items-center gap-1 text-[10px] text-[#1877f2] hover:text-[#1565c0] font-semibold mt-1 hover:underline"
