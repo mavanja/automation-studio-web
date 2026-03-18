@@ -1111,7 +1111,15 @@ function PostRow({ post, isRunning, onRun, onDelete }) {
           {s.label}
         </span>
         {post.fb_post_id && (
-          <div className="text-[10px] text-emerald-600 font-medium mt-1">✓ ID: {post.fb_post_id}</div>
+          <a
+            href={`https://www.facebook.com/groups/${post.group_id}/posts/${post.fb_post_id}/`}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="inline-flex items-center gap-1 text-[10px] text-emerald-600 hover:text-emerald-700 font-semibold mt-1 hover:underline"
+          >
+            <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/><polyline points="15 3 21 3 21 9"/><line x1="10" y1="14" x2="21" y2="3"/></svg>
+            Post öffnen
+          </a>
         )}
       </td>
       <td className="px-5 py-3.5 align-top">
