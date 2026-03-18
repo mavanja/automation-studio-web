@@ -334,7 +334,7 @@ function PostWizard({ form, setForm, step, setStep, saving, uploading, onSave, o
 
       {/* Step Content */}
       <div className="p-6">
-        {step === 1 && <WizardStep1 form={form} onChange={f} />}
+        {step === 1 && <WizardStep1 form={form} setForm={setForm} onChange={f} />}
         {step === 2 && (
           <WizardStep2
             form={form}
@@ -390,34 +390,144 @@ function PostWizard({ form, setForm, step, setStep, saving, uploading, onSave, o
 
 // ─── Wizard Steps ─────────────────────────────────────────────────────────────
 
-function WizardStep1({ form, onChange }) {
+function WizardStep1({ form, setForm, onChange }) {
+  const [savedGroups, setSavedGroups] = useState([])
+  const [loadingGroups, setLoadingGroups] = useState(true)
+  const [showManual, setShowManual] = useState(false)
+
+  useEffect(() => {
+    supabase
+      .from('fb_groups')
+      .select('group_id, group_name, group_url, is_admin, member_count')
+      .order('group_name', { ascending: true })
+      .then(({ data }) => {
+        setSavedGroups(data || [])
+        setLoadingGroups(false)
+      })
+  }, [])
+
+  const selectGroup = (g) => {
+    const rawId = (g.group_url || g.group_id || '')
+      .replace(/^https?:\/\/(www\.)?facebook\.com\/groups\//i, '')
+      .replace(/[/?#].*$/, '') || g.group_id
+    setForm(prev => ({ ...prev, group_id: rawId, group_name: g.group_name || '' }))
+    setShowManual(false)
+  }
+
+  const isSelected = (g) => {
+    const rawId = (g.group_url || g.group_id || '')
+      .replace(/^https?:\/\/(www\.)?facebook\.com\/groups\//i, '')
+      .replace(/[/?#].*$/, '') || g.group_id
+    return form.group_id === rawId
+  }
+
   return (
-    <div className="space-y-5 max-w-lg">
+    <div className="space-y-5">
       <div>
         <h3 className="text-[15px] font-bold text-[#1a1d2e] mb-1">Welche Gruppe?</h3>
-        <p className="text-sm text-[#9196b0]">Gib die ID oder URL der Facebook-Gruppe ein.</p>
+        <p className="text-sm text-[#9196b0]">Wähle eine gespeicherte Gruppe oder gib eine neue ID ein.</p>
       </div>
-      <div className="space-y-1.5">
-        <label className="text-[11px] font-bold text-[#5f647e] uppercase tracking-wide">Gruppen-ID oder URL *</label>
-        <input
-          value={form.group_id}
-          onChange={onChange('group_id')}
-          placeholder="z.B. 1234567890 oder facebook.com/groups/meinegruppe"
-          autoFocus
-          className="w-full px-4 py-3 text-sm border border-[#e2e5f0] rounded-[10px] focus:outline-none focus:border-primary focus:ring-2 focus:ring-primary/10 bg-white transition-all"
-        />
-        <p className="text-[11px] text-[#9196b0]">Die ID findest du in der Gruppen-URL: facebook.com/groups/<strong>ID</strong></p>
+
+      {/* Saved groups */}
+      {loadingGroups ? (
+        <div className="flex items-center gap-2 text-xs text-[#9196b0]">
+          <div className="w-3.5 h-3.5 border-2 border-primary border-t-transparent rounded-full animate-spin" />
+          Gruppen laden…
+        </div>
+      ) : savedGroups.length > 0 ? (
+        <div className="space-y-2">
+          <label className="text-[11px] font-bold text-[#5f647e] uppercase tracking-wide">Gespeicherte Gruppen</label>
+          <div className="grid grid-cols-1 gap-2 max-h-[260px] overflow-y-auto pr-0.5">
+            {savedGroups.map((g) => {
+              const selected = isSelected(g)
+              return (
+                <button
+                  key={g.group_id}
+                  type="button"
+                  onClick={() => selectGroup(g)}
+                  className={`flex items-center gap-3 px-4 py-3 rounded-[10px] border text-left transition-all ${
+                    selected
+                      ? 'border-primary bg-[#f0f7ff] shadow-sm'
+                      : 'border-[#e2e5f0] bg-white hover:border-primary/40 hover:bg-[#fafbff]'
+                  }`}
+                >
+                  <div className={`w-9 h-9 rounded-[8px] flex items-center justify-center shrink-0 text-base ${
+                    selected ? 'bg-primary/10 text-primary' : 'bg-[#f4f6fb] text-[#9196b0]'
+                  }`}>
+                    👥
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <div className={`text-sm font-semibold truncate ${selected ? 'text-primary' : 'text-[#1a1d2e]'}`}>
+                      {g.group_name || g.group_id}
+                    </div>
+                    <div className="text-[11px] text-[#9196b0] flex items-center gap-2 mt-0.5">
+                      {g.is_admin && (
+                        <span className="bg-emerald-50 text-emerald-600 px-1.5 py-0.5 rounded-[4px] font-semibold text-[10px]">Admin</span>
+                      )}
+                      {g.member_count > 0 && (
+                        <span>{g.member_count.toLocaleString('de-DE')} Mitglieder</span>
+                      )}
+                    </div>
+                  </div>
+                  {selected && (
+                    <div className="w-5 h-5 rounded-full bg-primary flex items-center justify-center shrink-0">
+                      <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="3" strokeLinecap="round"><polyline points="20 6 9 17 4 12"/></svg>
+                    </div>
+                  )}
+                </button>
+              )
+            })}
+          </div>
+        </div>
+      ) : null}
+
+      {/* Manual input toggle */}
+      <div>
+        <button
+          type="button"
+          onClick={() => setShowManual(v => !v)}
+          className="flex items-center gap-1.5 text-xs text-[#9196b0] hover:text-primary transition-colors"
+        >
+          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round">
+            <polyline points={showManual ? '18 15 12 9 6 15' : '6 9 12 15 18 9'} />
+          </svg>
+          {savedGroups.length > 0 ? (showManual ? 'Manuell ausblenden' : 'Manuell eingeben') : 'Gruppe manuell eingeben'}
+        </button>
       </div>
-      <div className="space-y-1.5">
-        <label className="text-[11px] font-bold text-[#5f647e] uppercase tracking-wide">Gruppenname (optional)</label>
-        <input
-          value={form.group_name}
-          onChange={onChange('group_name')}
-          placeholder="z.B. Meine Marketing-Gruppe"
-          className="w-full px-4 py-3 text-sm border border-[#e2e5f0] rounded-[10px] focus:outline-none focus:border-primary focus:ring-2 focus:ring-primary/10 bg-white transition-all"
-        />
-        <p className="text-[11px] text-[#9196b0]">Nur zur Anzeige in der Übersicht</p>
-      </div>
+
+      {/* Manual input fields */}
+      {(showManual || savedGroups.length === 0) && (
+        <div className="space-y-4 p-4 bg-[#f9fafb] border border-[#e2e5f0] rounded-[12px]">
+          <div className="space-y-1.5">
+            <label className="text-[11px] font-bold text-[#5f647e] uppercase tracking-wide">Gruppen-ID oder URL *</label>
+            <input
+              value={form.group_id}
+              onChange={onChange('group_id')}
+              placeholder="z.B. 1234567890 oder facebook.com/groups/meinegruppe"
+              autoFocus={savedGroups.length === 0}
+              className="w-full px-4 py-3 text-sm border border-[#e2e5f0] rounded-[10px] focus:outline-none focus:border-primary focus:ring-2 focus:ring-primary/10 bg-white transition-all"
+            />
+            <p className="text-[11px] text-[#9196b0]">Die ID findest du in der Gruppen-URL: facebook.com/groups/<strong>ID</strong></p>
+          </div>
+          <div className="space-y-1.5">
+            <label className="text-[11px] font-bold text-[#5f647e] uppercase tracking-wide">Gruppenname (optional)</label>
+            <input
+              value={form.group_name}
+              onChange={onChange('group_name')}
+              placeholder="z.B. Meine Marketing-Gruppe"
+              className="w-full px-4 py-3 text-sm border border-[#e2e5f0] rounded-[10px] focus:outline-none focus:border-primary focus:ring-2 focus:ring-primary/10 bg-white transition-all"
+            />
+          </div>
+        </div>
+      )}
+
+      {/* Show selected group summary if selected from list */}
+      {form.group_id && !showManual && savedGroups.length > 0 && (
+        <p className="text-[11px] text-[#9196b0]">
+          Ausgewählt: <strong className="text-[#1a1d2e]">{form.group_name || form.group_id}</strong>
+          <button type="button" onClick={() => setForm(prev => ({ ...prev, group_id: '', group_name: '' }))} className="ml-2 text-red-400 hover:text-red-600">✕</button>
+        </p>
+      )}
     </div>
   )
 }
