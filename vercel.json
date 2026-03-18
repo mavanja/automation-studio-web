@@ -3,6 +3,10 @@
     {
       "source": "/p/:id",
       "destination": "https://rzwfhokwmuuypvrrhfjq.supabase.co/functions/v1/post-preview?id=:id"
+    },
+    {
+      "source": "/(.*)",
+      "destination": "/index.html"
     }
   ]
 }
