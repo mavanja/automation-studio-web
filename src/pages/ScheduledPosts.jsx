@@ -224,7 +224,9 @@ export default function ScheduledPosts() {
           post: {
             groupId, postText: post.post_text,
             imageURL:  post.link_url
-              ? `https://rzwfhokwmuuypvrrhfjq.supabase.co/functions/v1/post-preview?id=${post.id}`
+              ? (post.image_url
+                  ? `https://rzwfhokwmuuypvrrhfjq.supabase.co/functions/v1/post-preview?id=${post.id}`
+                  : post.link_url)
               : (post.image_url || null),
             postColor: post.post_color || 'white',
             postLocation: 'group',
