@@ -598,18 +598,23 @@ function InlineAiTextarea({ value, onChange, placeholder, rows = 4, fieldType, c
     setShowPrompt(false)
     setShowTones(false)
     try {
-      const { data: { session } } = await supabase.auth.getSession()
+      let { data: { session } } = await supabase.auth.getSession()
+      if (!session?.access_token) {
+        const refreshed = await supabase.auth.refreshSession()
+        session = refreshed.data?.session
+      }
+      const token = session?.access_token || ANON_KEY
       const resp = await fetch(`${SUPABASE_URL}/functions/v1/ai-text-assist`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          'Authorization': `Bearer ${session?.access_token}`,
+          'Authorization': `Bearer ${token}`,
           'apikey': ANON_KEY,
         },
         body: JSON.stringify({ action, text, context }),
       })
       const data = await resp.json()
-      if (!resp.ok) throw new Error(data.error || 'AI Fehler')
+      if (!resp.ok) throw new Error(data.error || `Fehler ${resp.status}`)
       setAiResult(data.result)
     } catch (e) {
       setAiError(e.message)
