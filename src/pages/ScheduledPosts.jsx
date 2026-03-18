@@ -3,35 +3,42 @@ import { supabase } from '../lib/supabase'
 import PageHeader from '../components/PageHeader'
 import { t } from '../lib/i18n'
 import { useExtension } from '../hooks/useExtension'
-import AiTextAssist from '../components/AiTextAssist'
 
 const SUPABASE_URL = 'https://rzwfhokwmuuypvrrhfjq.supabase.co'
+const ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InJ6d2Zob2t3bXV1eXB2cnJoZmpxIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzM1OTI0NTQsImV4cCI6MjA4OTE2ODQ1NH0.DSmUNjUImGdSZX6ewl0f3SgNLF4yWd4Kx04wiXQ6Pt4'
 
-const STATUS_COLORS = {
-  pending:    'bg-gray-100 text-gray-600',
-  posting:    'bg-blue-100 text-blue-700',
-  posted:     'bg-yellow-100 text-yellow-700',
-  commenting: 'bg-blue-100 text-blue-700',
-  commented:  'bg-emerald-100 text-emerald-700',
-  error:      'bg-red-100 text-red-700',
+const STATUS = {
+  pending:    { color: 'bg-gray-100 text-gray-500',         dot: 'bg-gray-400',                     label: 'Ausstehend' },
+  posting:    { color: 'bg-blue-50 text-blue-600',           dot: 'bg-blue-500',                     label: 'Wird gepostet…' },
+  posted:     { color: 'bg-amber-50 text-amber-600',         dot: 'bg-amber-400',                    label: 'Post live' },
+  commenting: { color: 'bg-blue-50 text-blue-600',           dot: 'bg-blue-500 animate-pulse',       label: 'Kommentiert…' },
+  commented:  { color: 'bg-emerald-50 text-emerald-600',     dot: 'bg-emerald-500',                  label: 'Fertig' },
+  error:      { color: 'bg-red-50 text-red-600',             dot: 'bg-red-500',                      label: 'Fehler' },
 }
-const STATUS_LABELS = {
-  pending:    'Ausstehend',
-  posting:    'Wird gepostet…',
-  posted:     'Gepostet',
-  commenting: 'Kommentiert…',
-  commented:  'Fertig ✓',
-  error:      'Fehler',
-}
+
 const POST_COLORS = [
-  { id: 'white',          label: 'Kein Hintergrund' },
-  { id: 'blue',           label: 'Blau' },
-  { id: 'red',            label: 'Rot' },
-  { id: 'purple',         label: 'Lila' },
-  { id: 'pink',           label: 'Pink' },
-  { id: 'teal',           label: 'Türkis' },
-  { id: 'teal_green',     label: 'Türkis-Grün' },
-  { id: 'black',          label: 'Schwarz' },
+  { id: 'white',      hex: null },
+  { id: 'blue',       hex: '#1877f2' },
+  { id: 'red',        hex: '#e41e3f' },
+  { id: 'purple',     hex: '#7c3aed' },
+  { id: 'pink',       hex: '#ec4899' },
+  { id: 'teal',       hex: '#0891b2' },
+  { id: 'teal_green', hex: '#059669' },
+  { id: 'black',      hex: '#111827' },
+]
+
+const TONE_ACTIONS = [
+  { id: 'tone_professional', label: 'Professionell', icon: '💼' },
+  { id: 'tone_casual',       label: 'Locker',         icon: '😎' },
+  { id: 'tone_friendly',     label: 'Freundlich',     icon: '🤗' },
+  { id: 'tone_motivating',   label: 'Motivierend',    icon: '🚀' },
+]
+
+const STEPS = [
+  { n: 1, label: 'Gruppe' },
+  { n: 2, label: 'Post-Text' },
+  { n: 3, label: 'Kommentar' },
+  { n: 4, label: 'Optionen' },
 ]
 
 const EMPTY = {
@@ -39,13 +46,16 @@ const EMPTY = {
   comment_text: '', image_url: '', post_color: 'white', scheduled_at: '',
 }
 
+// ─── Main Page ────────────────────────────────────────────────────────────────
+
 export default function ScheduledPosts() {
   const { connected, send } = useExtension()
-  const [posts, setPosts]     = useState([])
-  const [loading, setLoading] = useState(true)
-  const [showForm, setShowForm] = useState(false)
-  const [form, setForm]       = useState(EMPTY)
-  const [saving, setSaving]   = useState(false)
+  const [posts, setPosts]         = useState([])
+  const [loading, setLoading]     = useState(true)
+  const [showWizard, setShowWizard] = useState(false)
+  const [step, setStep]           = useState(1)
+  const [form, setForm]           = useState(EMPTY)
+  const [saving, setSaving]       = useState(false)
   const [runningId, setRunningId] = useState(null)
   const [progress, setProgress]   = useState(null)
   const [error, setError]         = useState(null)
@@ -53,31 +63,6 @@ export default function ScheduledPosts() {
   const [imagePreview, setImagePreview] = useState(null)
   const [uploading, setUploading] = useState(false)
   const fileInputRef = useRef(null)
-
-  const handleFileSelect = (e) => {
-    const file = e.target.files?.[0]
-    if (!file) return
-    setImageFile(file)
-    setImagePreview(URL.createObjectURL(file))
-    setForm(prev => ({ ...prev, image_url: '' }))
-  }
-
-  const clearImage = () => {
-    setImageFile(null)
-    setImagePreview(null)
-    setForm(prev => ({ ...prev, image_url: '' }))
-    if (fileInputRef.current) fileInputRef.current.value = ''
-  }
-
-  const uploadImage = async (file) => {
-    const ext = file.name.split('.').pop()
-    const path = `${Date.now()}_${Math.random().toString(36).slice(2, 8)}.${ext}`
-    const { error: uploadErr } = await supabase.storage
-      .from('post-images')
-      .upload(path, file, { contentType: file.type })
-    if (uploadErr) throw uploadErr
-    return `${SUPABASE_URL}/storage/v1/object/public/post-images/${path}`
-  }
 
   const load = useCallback(async () => {
     setLoading(true)
@@ -92,24 +77,15 @@ export default function ScheduledPosts() {
 
   useEffect(() => {
     load()
-
-    // Live-updates via Supabase Realtime (background.js updates status in DB)
     const channel = supabase
       .channel('scheduled_post_comments_changes')
-      .on('postgres_changes', {
-        event: 'UPDATE',
-        schema: 'public',
-        table: 'scheduled_post_comments',
-      }, (payload) => {
+      .on('postgres_changes', { event: 'UPDATE', schema: 'public', table: 'scheduled_post_comments' }, (payload) => {
         const row = payload.new
-        if (row.status === 'posting') {
-          setProgress('Post wird erstellt…')
-        } else if (row.status === 'posted') {
-          setProgress('Post erstellt! Kommentar wird gepostet…')
-        } else if (row.status === 'commenting') {
-          setProgress('Kommentar wird gepostet…')
-        } else if (row.status === 'commented') {
-          setProgress('Fertig! ✓')
+        if (row.status === 'posting')    setProgress('Post wird erstellt…')
+        else if (row.status === 'posted')     setProgress('Post live! Kommentar folgt…')
+        else if (row.status === 'commenting') setProgress('Kommentar wird gepostet…')
+        else if (row.status === 'commented') {
+          setProgress('Fertig ✓')
           setRunningId(null)
           load()
           setTimeout(() => setProgress(null), 3000)
@@ -121,27 +97,29 @@ export default function ScheduledPosts() {
         }
       })
       .subscribe()
-
     return () => supabase.removeChannel(channel)
   }, [load])
 
+  const uploadImage = async (file) => {
+    const ext = file.name.split('.').pop()
+    const path = `${Date.now()}_${Math.random().toString(36).slice(2, 8)}.${ext}`
+    const { error: uploadErr } = await supabase.storage
+      .from('post-images')
+      .upload(path, file, { contentType: file.type })
+    if (uploadErr) throw uploadErr
+    return `${SUPABASE_URL}/storage/v1/object/public/post-images/${path}`
+  }
+
   const handleSave = async () => {
-    if (!form.group_id.trim() || !form.post_text.trim() || !form.comment_text.trim()) {
-      setError('Gruppen-ID, Post-Text und Kommentar sind Pflichtfelder.')
-      return
-    }
     setSaving(true)
     setError(null)
     try {
       let imageUrl = form.image_url.trim() || null
-
-      // Upload file if selected
       if (imageFile) {
         setUploading(true)
         imageUrl = await uploadImage(imageFile)
         setUploading(false)
       }
-
       const { data: { user } } = await supabase.auth.getUser()
       const { error: err } = await supabase.from('scheduled_post_comments').insert({
         user_id:      user?.id || 'unknown',
@@ -155,9 +133,11 @@ export default function ScheduledPosts() {
         status:       'pending',
       })
       if (err) throw err
-      setShowForm(false)
+      setShowWizard(false)
       setForm(EMPTY)
-      clearImage()
+      setStep(1)
+      setImageFile(null)
+      setImagePreview(null)
       load()
     } catch (e) {
       setError(e.message)
@@ -172,7 +152,6 @@ export default function ScheduledPosts() {
     setProgress('Verbinde mit Facebook…')
     setError(null)
     try {
-      // Extract numeric group ID from full URL or plain ID
       const rawId = post.group_id || ''
       const groupId = rawId.replace(/^https?:\/\/(www\.)?facebook\.com\/groups\//i, '').replace(/[/?#].*$/, '')
       await send({
@@ -184,10 +163,9 @@ export default function ScheduledPosts() {
           recordId:    post.id,
           commentText: post.comment_text,
           post: {
-            groupId:      groupId,
-            postText:     post.post_text,
-            imageURL:     post.image_url || null,
-            postColor:    post.post_color || 'white',
+            groupId, postText: post.post_text,
+            imageURL:  post.image_url || null,
+            postColor: post.post_color || 'white',
             postLocation: 'group',
           },
         },
@@ -210,263 +188,742 @@ export default function ScheduledPosts() {
     load()
   }
 
-  const f = (k) => (e) => setForm({ ...form, [k]: e.target.value })
+  const openWizard = () => {
+    setShowWizard(true)
+    setStep(1)
+    setForm(EMPTY)
+    setImageFile(null)
+    setImagePreview(null)
+    setError(null)
+  }
+
+  const closeWizard = () => {
+    setShowWizard(false)
+    setStep(1)
+    setError(null)
+  }
 
   return (
     <>
       <PageHeader title={t('posts.title')} />
-      <div className="p-7 space-y-6">
+      <div className="p-6 space-y-5">
 
         {/* Progress Banner */}
         {progress && (
-          <div className="flex items-center gap-3 bg-blue-50 border border-blue-200 rounded-[12px] px-5 py-3.5">
-            <div className="w-4 h-4 border-2 border-blue-500 border-t-transparent rounded-full animate-spin shrink-0" />
-            <span className="text-sm text-blue-700 font-medium">{progress}</span>
+          <div className="flex items-center gap-3 bg-[#f0f7ff] border border-[#c2d9ff] rounded-[12px] px-4 py-3">
+            <div className="w-4 h-4 border-2 border-[#1877f2] border-t-transparent rounded-full animate-spin shrink-0" />
+            <span className="text-sm text-[#1877f2] font-medium">{progress}</span>
           </div>
         )}
 
         {/* Error */}
         {error && (
-          <div className="bg-red-50 border border-red-200 rounded-[12px] px-5 py-3.5 text-sm text-red-700 flex items-start gap-2">
-            <span className="shrink-0 mt-0.5">⚠️</span>
-            <span>{error}</span>
-            <button onClick={() => setError(null)} className="ml-auto text-red-400 hover:text-red-600">✕</button>
+          <div className="bg-red-50 border border-red-200 rounded-[12px] px-4 py-3 flex items-center gap-3">
+            <span className="text-red-500 shrink-0 text-base">⚠</span>
+            <span className="text-sm text-red-700 flex-1">{error}</span>
+            <button onClick={() => setError(null)} className="text-red-400 hover:text-red-600 transition-colors">✕</button>
           </div>
         )}
 
         {/* Toolbar */}
         <div className="flex items-center justify-between">
-          <p className="text-sm text-[#9196b0]">Post in Gruppe erstellen + automatisch kommentieren</p>
+          <p className="text-sm text-[#9196b0]">Post in Facebook-Gruppe erstellen und automatisch kommentieren</p>
           <button
-            onClick={() => { setShowForm(!showForm); setError(null) }}
-            className="px-4 py-2 bg-primary hover:bg-primary-hover text-white rounded-[10px] text-sm font-semibold transition-colors shadow-sm"
+            onClick={showWizard ? closeWizard : openWizard}
+            className={`flex items-center gap-2 px-4 py-2.5 rounded-[10px] text-sm font-semibold transition-all shadow-sm ${
+              showWizard
+                ? 'bg-[#f4f6fb] border border-[#e2e5f0] text-[#5f647e] hover:bg-red-50 hover:border-red-200 hover:text-red-500'
+                : 'bg-primary hover:bg-primary-hover text-white shadow-[#1877f2]/15'
+            }`}
           >
-            {showForm ? 'Abbrechen' : '+ Neuer Post'}
+            {showWizard
+              ? <><span>✕</span> Abbrechen</>
+              : <><span className="text-lg leading-none font-light">+</span> Neuer Post</>}
           </button>
         </div>
 
-        {/* Form */}
-        {showForm && (
-          <div className="bg-white border border-[#e2e5f0] rounded-[14px] shadow-sm p-6 space-y-5">
-            <h2 className="text-base font-bold text-[#1a1d2e]">Neuen geplanten Post erstellen</h2>
-
-            <div className="grid grid-cols-2 gap-4">
-              <div className="space-y-1">
-                <label className="text-xs font-semibold text-[#5f647e]">Gruppen-ID *</label>
-                <input value={form.group_id} onChange={f('group_id')}
-                  placeholder="z.B. 1234567890"
-                  className="w-full px-3 py-2 text-sm border border-[#e2e5f0] rounded-[8px] focus:outline-none focus:border-primary bg-[#f9fafb]" />
-                <p className="text-[11px] text-[#9196b0]">Aus der Gruppen-URL: facebook.com/groups/<b>ID</b></p>
-              </div>
-              <div className="space-y-1">
-                <label className="text-xs font-semibold text-[#5f647e]">Gruppenname (optional)</label>
-                <input value={form.group_name} onChange={f('group_name')}
-                  placeholder="z.B. Meine Gruppe"
-                  className="w-full px-3 py-2 text-sm border border-[#e2e5f0] rounded-[8px] focus:outline-none focus:border-primary bg-[#f9fafb]" />
-              </div>
-            </div>
-
-            <div className="space-y-1">
-              <div className="flex items-center justify-between">
-                <label className="text-xs font-semibold text-[#5f647e]">Post-Text *</label>
-                <AiTextAssist
-                  value={form.post_text}
-                  onAccept={(text) => setForm(prev => ({ ...prev, post_text: text }))}
-                  fieldType="post"
-                  context={form.group_name || form.group_id}
-                />
-              </div>
-              <textarea value={form.post_text} onChange={f('post_text')}
-                rows={4} placeholder="Dein Beitrags-Text…"
-                className="w-full px-3 py-2 text-sm border border-[#e2e5f0] rounded-[8px] focus:outline-none focus:border-primary bg-[#f9fafb] resize-none" />
-            </div>
-
-            <div className="space-y-1">
-              <div className="flex items-center justify-between">
-                <label className="text-xs font-semibold text-[#5f647e]">Kommentar-Text * <span className="font-normal text-[#9196b0]">(wird automatisch nach dem Post gepostet)</span></label>
-                <AiTextAssist
-                  value={form.comment_text}
-                  onAccept={(text) => setForm(prev => ({ ...prev, comment_text: text }))}
-                  fieldType="comment"
-                  context={form.post_text}
-                />
-              </div>
-              <textarea value={form.comment_text} onChange={f('comment_text')}
-                rows={3} placeholder="Kommentar der automatisch gepostet wird…"
-                className="w-full px-3 py-2 text-sm border border-[#e2e5f0] rounded-[8px] focus:outline-none focus:border-primary bg-[#f9fafb] resize-none" />
-            </div>
-
-            <div className="space-y-1">
-              <label className="text-xs font-semibold text-[#5f647e]">Bild (optional)</label>
-              <div className="flex items-center gap-3">
-                <input
-                  ref={fileInputRef}
-                  type="file"
-                  accept="image/*"
-                  onChange={handleFileSelect}
-                  className="hidden"
-                />
-                <button
-                  type="button"
-                  onClick={() => fileInputRef.current?.click()}
-                  className="px-4 py-2 text-sm border border-[#e2e5f0] rounded-[8px] hover:bg-[#f4f6fb] transition-colors text-[#5f647e]"
-                >
-                  Bild auswählen
-                </button>
-                {!imageFile && (
-                  <input
-                    value={form.image_url}
-                    onChange={f('image_url')}
-                    type="url"
-                    placeholder="oder URL eingeben: https://…"
-                    className="flex-1 px-3 py-2 text-sm border border-[#e2e5f0] rounded-[8px] focus:outline-none focus:border-primary bg-[#f9fafb]"
-                  />
-                )}
-                {imageFile && (
-                  <div className="flex items-center gap-2 text-sm text-[#5f647e]">
-                    <span className="truncate max-w-[200px]">{imageFile.name}</span>
-                    <button type="button" onClick={clearImage} className="text-red-400 hover:text-red-600 shrink-0">✕</button>
-                  </div>
-                )}
-              </div>
-              {imagePreview && (
-                <img src={imagePreview} alt="Vorschau" className="mt-2 rounded-[8px] max-h-40 object-cover border border-[#e2e5f0]" />
-              )}
-            </div>
-
-            <div className="space-y-1">
-              <label className="text-xs font-semibold text-[#5f647e]">Hintergrundfarbe</label>
-              <select value={form.post_color} onChange={f('post_color')}
-                className="w-full px-3 py-2 text-sm border border-[#e2e5f0] rounded-[8px] focus:outline-none focus:border-primary bg-[#f9fafb]">
-                {POST_COLORS.map(c => <option key={c.id} value={c.id}>{c.label}</option>)}
-              </select>
-              <p className="text-[11px] text-[#9196b0]">Nur für Text-Posts ohne Bild</p>
-            </div>
-
-            <div className="space-y-1">
-              <label className="text-xs font-semibold text-[#5f647e]">Geplant für (optional)</label>
-              <input value={form.scheduled_at} onChange={f('scheduled_at')}
-                type="datetime-local"
-                className="w-full px-3 py-2 text-sm border border-[#e2e5f0] rounded-[8px] focus:outline-none focus:border-primary bg-[#f9fafb]" />
-              <p className="text-[11px] text-[#9196b0]">Leer lassen = sofort wenn du auf "Starten" klickst</p>
-            </div>
-
-            {error && <p className="text-sm text-red-600">{error}</p>}
-
-            <div className="flex gap-3 pt-1">
-              <button onClick={handleSave} disabled={saving}
-                className="flex-1 py-2.5 bg-primary hover:bg-primary-hover text-white rounded-[10px] text-sm font-semibold transition-colors disabled:opacity-50">
-                {uploading ? 'Bild wird hochgeladen…' : saving ? 'Speichern…' : 'Speichern'}
-              </button>
-              <button onClick={() => { setShowForm(false); setForm(EMPTY); setError(null) }}
-                className="px-5 py-2.5 border border-[#e2e5f0] text-[#5f647e] rounded-[10px] text-sm hover:bg-[#f4f6fb] transition-colors">
-                Abbrechen
-              </button>
-            </div>
-          </div>
+        {/* Wizard */}
+        {showWizard && (
+          <PostWizard
+            form={form}
+            setForm={setForm}
+            step={step}
+            setStep={setStep}
+            saving={saving}
+            uploading={uploading}
+            onSave={handleSave}
+            onCancel={closeWizard}
+            imageFile={imageFile}
+            setImageFile={setImageFile}
+            imagePreview={imagePreview}
+            setImagePreview={setImagePreview}
+            fileInputRef={fileInputRef}
+          />
         )}
 
-        {/* List */}
+        {/* Posts List */}
         {loading ? (
           <div className="flex justify-center py-16">
-            <div className="w-8 h-8 border-4 border-primary border-t-transparent rounded-full animate-spin" />
+            <div className="w-7 h-7 border-[3px] border-primary border-t-transparent rounded-full animate-spin" />
           </div>
         ) : posts.length === 0 ? (
-          <div className="bg-white border border-[#e2e5f0] rounded-[14px] shadow-sm p-14 text-center">
-            <div className="text-5xl mb-3">📅</div>
-            <p className="font-semibold text-[#1a1d2e] mb-1">Noch keine geplanten Posts</p>
-            <p className="text-sm text-[#9196b0]">Klicke auf "+ Neuer Post" um anzufangen</p>
-          </div>
+          <EmptyState onNew={openWizard} />
         ) : (
-          <div className="space-y-3">
-            {posts.map(post => (
-              <PostCard
-                key={post.id}
-                post={post}
-                isRunning={runningId === post.id}
-                onRun={() => handleRun(post)}
-                onDelete={() => handleDelete(post.id)}
-              />
-            ))}
-          </div>
+          <PostsTable posts={posts} runningId={runningId} onRun={handleRun} onDelete={handleDelete} />
         )}
       </div>
     </>
   )
 }
 
-function PostCard({ post, isRunning, onRun, onDelete }) {
-  const canRun = post.status === 'pending' || post.status === 'error'
-  const statusColor = STATUS_COLORS[post.status] || STATUS_COLORS.pending
-  const statusLabel = STATUS_LABELS[post.status] || post.status
+// ─── Post Wizard ──────────────────────────────────────────────────────────────
+
+function PostWizard({ form, setForm, step, setStep, saving, uploading, onSave, onCancel, imageFile, setImageFile, imagePreview, setImagePreview, fileInputRef }) {
+  const f = (k) => (e) => setForm(prev => ({ ...prev, [k]: e.target.value }))
+
+  const canGoNext = () => {
+    if (step === 1) return form.group_id.trim().length > 0
+    if (step === 2) return form.post_text.trim().length > 0
+    if (step === 3) return form.comment_text.trim().length > 0
+    return true
+  }
+
+  const handleFileSelect = (e) => {
+    const file = e.target.files?.[0]
+    if (!file) return
+    setImageFile(file)
+    setImagePreview(URL.createObjectURL(file))
+    setForm(prev => ({ ...prev, image_url: '' }))
+  }
+
+  const clearImage = () => {
+    setImageFile(null)
+    setImagePreview(null)
+    setForm(prev => ({ ...prev, image_url: '' }))
+    if (fileInputRef.current) fileInputRef.current.value = ''
+  }
 
   return (
-    <div className="bg-white border border-[#e2e5f0] rounded-[14px] shadow-sm p-5 hover:shadow-md transition-shadow">
-      <div className="flex items-start justify-between gap-4">
-        <div className="flex-1 min-w-0">
-          {/* Header row */}
-          <div className="flex flex-wrap items-center gap-2 mb-2">
-            <span className={`text-[11px] px-2.5 py-0.5 rounded-full font-semibold ${statusColor}`}>
-              {statusLabel}
-            </span>
-            <span className="text-xs font-semibold text-[#1a1d2e]">
-              {post.group_name || `Gruppe ${post.group_id}`}
-            </span>
-            {post.scheduled_at && (
-              <span className="text-[11px] text-[#9196b0]">
-                · {new Date(post.scheduled_at).toLocaleString('de-DE')}
-              </span>
-            )}
-            <span className="text-[11px] text-[#c4c7d6] ml-auto">
-              {new Date(post.created_at).toLocaleDateString('de-DE')}
-            </span>
-          </div>
+    <div className="bg-white border border-[#e2e5f0] rounded-[16px] shadow-sm overflow-hidden">
+      {/* Step Indicator */}
+      <div className="px-6 py-4 border-b border-[#e2e5f0] bg-gradient-to-r from-[#f0f7ff] to-transparent">
+        <div className="flex items-center">
+          {STEPS.map((s, i) => (
+            <React.Fragment key={s.n}>
+              <div className="flex items-center gap-2 shrink-0">
+                <div className={`w-7 h-7 rounded-full flex items-center justify-center text-xs font-bold transition-all ${
+                  step > s.n
+                    ? 'bg-emerald-500 text-white'
+                    : step === s.n
+                      ? 'bg-[#1877f2] text-white shadow-sm'
+                      : 'bg-[#f4f6fb] text-[#c4c7d6] border border-[#e2e5f0]'
+                }`}>
+                  {step > s.n ? '✓' : s.n}
+                </div>
+                <span className={`text-xs font-semibold hidden sm:block ${step === s.n ? 'text-[#1a1d2e]' : 'text-[#c4c7d6]'}`}>
+                  {s.label}
+                </span>
+              </div>
+              {i < STEPS.length - 1 && (
+                <div className={`flex-1 h-px mx-3 transition-colors ${step > s.n ? 'bg-emerald-300' : 'bg-[#e2e5f0]'}`} />
+              )}
+            </React.Fragment>
+          ))}
+        </div>
+      </div>
 
-          {/* Image preview */}
-          {post.image_url && (
-            <img src={post.image_url} alt="" className="rounded-[8px] max-h-24 object-cover border border-[#e2e5f0] mb-2" />
+      {/* Step Content */}
+      <div className="p-6">
+        {step === 1 && <WizardStep1 form={form} onChange={f} />}
+        {step === 2 && (
+          <WizardStep2
+            form={form}
+            setForm={setForm}
+            onChange={f}
+            imageFile={imageFile}
+            imagePreview={imagePreview}
+            fileInputRef={fileInputRef}
+            onFileSelect={handleFileSelect}
+            onClearImage={clearImage}
+          />
+        )}
+        {step === 3 && <WizardStep3 form={form} setForm={setForm} />}
+        {step === 4 && <WizardStep4 form={form} onChange={f} />}
+      </div>
+
+      {/* Navigation */}
+      <div className="px-6 py-4 border-t border-[#e2e5f0] bg-[#f9fafb] flex items-center justify-between">
+        <button
+          type="button"
+          onClick={() => step > 1 ? setStep(step - 1) : onCancel()}
+          className="flex items-center gap-1.5 px-4 py-2 text-sm text-[#9196b0] hover:text-[#5f647e] transition-colors"
+        >
+          ← {step > 1 ? 'Zurück' : 'Abbrechen'}
+        </button>
+
+        <div className="flex items-center gap-3">
+          <span className="text-xs text-[#c4c7d6]">{step} / 4</span>
+          {step < 4 ? (
+            <button
+              type="button"
+              onClick={() => setStep(step + 1)}
+              disabled={!canGoNext()}
+              className="flex items-center gap-2 px-5 py-2.5 bg-primary hover:bg-primary-hover text-white rounded-[10px] text-sm font-semibold transition-all disabled:opacity-40 disabled:cursor-not-allowed shadow-sm"
+            >
+              Weiter →
+            </button>
+          ) : (
+            <button
+              type="button"
+              onClick={onSave}
+              disabled={saving || !canGoNext()}
+              className="flex items-center gap-2 px-5 py-2.5 bg-primary hover:bg-primary-hover text-white rounded-[10px] text-sm font-semibold transition-all disabled:opacity-50 shadow-sm"
+            >
+              {uploading ? 'Bild lädt…' : saving ? 'Speichert…' : '✓ Speichern'}
+            </button>
+          )}
+        </div>
+      </div>
+    </div>
+  )
+}
+
+// ─── Wizard Steps ─────────────────────────────────────────────────────────────
+
+function WizardStep1({ form, onChange }) {
+  return (
+    <div className="space-y-5 max-w-lg">
+      <div>
+        <h3 className="text-[15px] font-bold text-[#1a1d2e] mb-1">Welche Gruppe?</h3>
+        <p className="text-sm text-[#9196b0]">Gib die ID oder URL der Facebook-Gruppe ein.</p>
+      </div>
+      <div className="space-y-1.5">
+        <label className="text-[11px] font-bold text-[#5f647e] uppercase tracking-wide">Gruppen-ID oder URL *</label>
+        <input
+          value={form.group_id}
+          onChange={onChange('group_id')}
+          placeholder="z.B. 1234567890 oder facebook.com/groups/meinegruppe"
+          autoFocus
+          className="w-full px-4 py-3 text-sm border border-[#e2e5f0] rounded-[10px] focus:outline-none focus:border-primary focus:ring-2 focus:ring-primary/10 bg-white transition-all"
+        />
+        <p className="text-[11px] text-[#9196b0]">Die ID findest du in der Gruppen-URL: facebook.com/groups/<strong>ID</strong></p>
+      </div>
+      <div className="space-y-1.5">
+        <label className="text-[11px] font-bold text-[#5f647e] uppercase tracking-wide">Gruppenname (optional)</label>
+        <input
+          value={form.group_name}
+          onChange={onChange('group_name')}
+          placeholder="z.B. Meine Marketing-Gruppe"
+          className="w-full px-4 py-3 text-sm border border-[#e2e5f0] rounded-[10px] focus:outline-none focus:border-primary focus:ring-2 focus:ring-primary/10 bg-white transition-all"
+        />
+        <p className="text-[11px] text-[#9196b0]">Nur zur Anzeige in der Übersicht</p>
+      </div>
+    </div>
+  )
+}
+
+function WizardStep2({ form, setForm, onChange, imageFile, imagePreview, fileInputRef, onFileSelect, onClearImage }) {
+  return (
+    <div className="space-y-5">
+      <div>
+        <h3 className="text-[15px] font-bold text-[#1a1d2e] mb-1">Post-Text</h3>
+        <p className="text-sm text-[#9196b0]">Was möchtest du posten? Nutze den AI-Assistenten für Ideen.</p>
+      </div>
+
+      <InlineAiTextarea
+        value={form.post_text}
+        onChange={(v) => setForm(prev => ({ ...prev, post_text: v }))}
+        placeholder="Dein Beitrags-Text…"
+        rows={5}
+        fieldType="post"
+        context={form.group_name || form.group_id}
+      />
+
+      {/* Image Upload */}
+      <div className="space-y-2">
+        <label className="text-[11px] font-bold text-[#5f647e] uppercase tracking-wide">Bild (optional)</label>
+        <input ref={fileInputRef} type="file" accept="image/*" onChange={onFileSelect} className="hidden" />
+        {imagePreview ? (
+          <div className="relative inline-block">
+            <img src={imagePreview} alt="Vorschau" className="rounded-[10px] max-h-48 object-cover border border-[#e2e5f0]" />
+            <button
+              type="button"
+              onClick={onClearImage}
+              className="absolute top-2 right-2 w-6 h-6 bg-black/50 hover:bg-black/70 text-white rounded-full flex items-center justify-center text-xs transition-colors"
+            >✕</button>
+          </div>
+        ) : (
+          <div className="flex items-center gap-3">
+            <button
+              type="button"
+              onClick={() => fileInputRef.current?.click()}
+              className="flex items-center gap-2 px-4 py-2.5 border border-dashed border-[#c4c7d6] rounded-[10px] text-sm text-[#9196b0] hover:border-primary hover:text-primary hover:bg-[#f0f7ff] transition-all shrink-0"
+            >
+              <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><polyline points="21 15 16 10 5 21"/></svg>
+              Hochladen
+            </button>
+            <span className="text-xs text-[#c4c7d6]">oder</span>
+            <input
+              value={form.image_url}
+              onChange={onChange('image_url')}
+              type="url"
+              placeholder="Bild-URL: https://…"
+              className="flex-1 px-4 py-2.5 text-sm border border-[#e2e5f0] rounded-[10px] focus:outline-none focus:border-primary bg-white"
+            />
+          </div>
+        )}
+      </div>
+
+      {/* Color swatches */}
+      <div className="space-y-2">
+        <label className="text-[11px] font-bold text-[#5f647e] uppercase tracking-wide">Hintergrundfarbe</label>
+        <div className="flex items-center gap-2 flex-wrap">
+          {POST_COLORS.map(c => (
+            <button
+              key={c.id}
+              type="button"
+              onClick={() => setForm(prev => ({ ...prev, post_color: c.id }))}
+              title={c.id}
+              className={`w-8 h-8 rounded-full border-2 transition-all ${
+                form.post_color === c.id ? 'border-[#1877f2] scale-110 shadow-md' : 'border-[#e2e5f0] hover:scale-105'
+              }`}
+              style={{ backgroundColor: c.hex || '#f4f6fb' }}
+            />
+          ))}
+        </div>
+        <p className="text-[11px] text-[#9196b0]">Hintergrundfarbe gilt nur für Text-Posts ohne Bild</p>
+      </div>
+    </div>
+  )
+}
+
+function WizardStep3({ form, setForm }) {
+  return (
+    <div className="space-y-5">
+      <div>
+        <h3 className="text-[15px] font-bold text-[#1a1d2e] mb-1">Auto-Kommentar</h3>
+        <p className="text-sm text-[#9196b0]">
+          Dieser Kommentar wird <strong>automatisch</strong> direkt nach dem Post gepostet — perfekt als erster Kommentar.
+        </p>
+      </div>
+
+      <InlineAiTextarea
+        value={form.comment_text}
+        onChange={(v) => setForm(prev => ({ ...prev, comment_text: v }))}
+        placeholder="z.B. Hinterlasse hier deinen Kommentar 👇 Ich freue mich auf den Austausch!"
+        rows={4}
+        fieldType="comment"
+        context={form.post_text}
+      />
+
+      <div className="flex items-start gap-3 bg-[#f0f7ff] border border-[#c2d9ff] rounded-[10px] px-4 py-3">
+        <span className="text-[#1877f2] text-base shrink-0 mt-0.5">ℹ</span>
+        <p className="text-xs text-[#5f647e] leading-relaxed">
+          Der Kommentar wird sofort nach dem Erstellen des Posts automatisch gepostet.
+          Er erscheint als erster Kommentar und erhöht so die Interaktion.
+        </p>
+      </div>
+    </div>
+  )
+}
+
+function WizardStep4({ form, onChange }) {
+  return (
+    <div className="space-y-5 max-w-lg">
+      <div>
+        <h3 className="text-[15px] font-bold text-[#1a1d2e] mb-1">Zeitplan & Zusammenfassung</h3>
+        <p className="text-sm text-[#9196b0]">Optional: Lege fest, wann du starten möchtest.</p>
+      </div>
+
+      <div className="space-y-1.5">
+        <label className="text-[11px] font-bold text-[#5f647e] uppercase tracking-wide">Geplant für (optional)</label>
+        <input
+          value={form.scheduled_at}
+          onChange={onChange('scheduled_at')}
+          type="datetime-local"
+          className="w-full px-4 py-3 text-sm border border-[#e2e5f0] rounded-[10px] focus:outline-none focus:border-primary bg-white"
+        />
+        <p className="text-[11px] text-[#9196b0]">Leer lassen = sofort wenn du auf "Starten" klickst</p>
+      </div>
+
+      <div className="bg-[#f9fafb] border border-[#e2e5f0] rounded-[12px] p-4 space-y-3">
+        <p className="text-[11px] font-bold text-[#9196b0] uppercase tracking-wide">Zusammenfassung</p>
+        <div className="space-y-2.5">
+          <SummaryRow label="Gruppe" value={form.group_name || form.group_id || '—'} />
+          <SummaryRow label="Post-Text" value={form.post_text} truncate />
+          <SummaryRow label="Kommentar" value={form.comment_text} truncate />
+          {form.image_url && <SummaryRow label="Bild" value="✓ Bild hochgeladen" />}
+        </div>
+      </div>
+    </div>
+  )
+}
+
+function SummaryRow({ label, value, truncate }) {
+  const display = truncate && value?.length > 70 ? value.substring(0, 70) + '…' : value
+  return (
+    <div className="flex items-start gap-3">
+      <span className="text-[11px] text-[#9196b0] w-20 shrink-0 pt-0.5">{label}</span>
+      <span className="text-xs text-[#1a1d2e] font-medium leading-relaxed flex-1">{display || '—'}</span>
+    </div>
+  )
+}
+
+// ─── Inline AI Textarea (Chatwoot-style) ──────────────────────────────────────
+
+function InlineAiTextarea({ value, onChange, placeholder, rows = 4, fieldType, context }) {
+  const [aiLoading, setAiLoading]     = useState(false)
+  const [aiResult, setAiResult]       = useState(null)
+  const [aiError, setAiError]         = useState(null)
+  const [showPrompt, setShowPrompt]   = useState(false)
+  const [promptText, setPromptText]   = useState('')
+  const [showTones, setShowTones]     = useState(false)
+  const promptRef = useRef(null)
+  const toneRef   = useRef(null)
+
+  const hasText = (value || '').trim().length > 0
+
+  useEffect(() => {
+    const handler = (e) => {
+      if (toneRef.current && !toneRef.current.contains(e.target)) setShowTones(false)
+    }
+    document.addEventListener('mousedown', handler)
+    return () => document.removeEventListener('mousedown', handler)
+  }, [])
+
+  const callAi = async (action, text) => {
+    setAiLoading(true)
+    setAiError(null)
+    setAiResult(null)
+    setShowPrompt(false)
+    setShowTones(false)
+    try {
+      const { data: { session } } = await supabase.auth.getSession()
+      const resp = await fetch(`${SUPABASE_URL}/functions/v1/ai-text-assist`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${session?.access_token}`,
+          'apikey': ANON_KEY,
+        },
+        body: JSON.stringify({ action, text, context }),
+      })
+      const data = await resp.json()
+      if (!resp.ok) throw new Error(data.error || 'AI Fehler')
+      setAiResult(data.result)
+    } catch (e) {
+      setAiError(e.message)
+    } finally {
+      setAiLoading(false)
+    }
+  }
+
+  const handleGenerate = () => {
+    if (!promptText.trim()) return
+    const action = fieldType === 'comment' ? 'generate_comment' : 'generate'
+    callAi(action, promptText)
+    setPromptText('')
+  }
+
+  const handleAccept = () => {
+    onChange(aiResult)
+    setAiResult(null)
+  }
+
+  const togglePrompt = () => {
+    setShowPrompt(v => !v)
+    setShowTones(false)
+    if (!showPrompt) setTimeout(() => promptRef.current?.focus(), 50)
+  }
+
+  return (
+    <div className="space-y-2">
+      {/* Textarea container */}
+      <div className={`rounded-[12px] border overflow-hidden transition-colors ${
+        aiLoading ? 'border-[#1877f2]/40' : 'border-[#e2e5f0] focus-within:border-[#1877f2]'
+      }`}>
+        <textarea
+          value={value}
+          onChange={(e) => onChange(e.target.value)}
+          placeholder={placeholder}
+          rows={rows}
+          className="w-full px-4 py-3 text-sm bg-white resize-none focus:outline-none leading-relaxed"
+        />
+
+        {/* AI Toolbar */}
+        <div className="flex items-center gap-0.5 px-3 py-2 bg-[#f9fafb] border-t border-[#f0f0f5]">
+          <span className="text-[10px] text-[#c4c7d6] font-bold mr-2 tracking-wider">AI</span>
+
+          {/* Generieren */}
+          <ToolbarBtn
+            active={showPrompt}
+            onClick={togglePrompt}
+            disabled={aiLoading}
+          >
+            🪄 Generieren
+          </ToolbarBtn>
+
+          {/* Text actions — only when text exists */}
+          {hasText && (
+            <>
+              <ToolbarBtn onClick={() => callAi('improve', value)} disabled={aiLoading}>
+                ✨ Verbessern
+              </ToolbarBtn>
+              <ToolbarBtn onClick={() => callAi('shorten', value)} disabled={aiLoading}>
+                ✂️ Kürzen
+              </ToolbarBtn>
+              <ToolbarBtn onClick={() => callAi('rephrase', value)} disabled={aiLoading}>
+                🔄 Umformulieren
+              </ToolbarBtn>
+
+              <div className="w-px h-3.5 bg-[#e2e5f0] mx-1" />
+
+              {/* Tone dropdown */}
+              <div className="relative" ref={toneRef}>
+                <ToolbarBtn active={showTones} onClick={() => { setShowTones(v => !v); setShowPrompt(false) }} disabled={aiLoading}>
+                  🎭 Ton
+                  <svg width="9" height="9" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" className="ml-0.5"><polyline points="6 9 12 15 18 9"/></svg>
+                </ToolbarBtn>
+                {showTones && (
+                  <div className="absolute bottom-full left-0 mb-1 bg-white border border-[#e2e5f0] rounded-[10px] shadow-xl py-1 z-30 w-44 overflow-hidden">
+                    {TONE_ACTIONS.map(tone => (
+                      <button
+                        key={tone.id}
+                        type="button"
+                        onClick={() => { callAi(tone.id, value); setShowTones(false) }}
+                        className="w-full flex items-center gap-2.5 px-3 py-2.5 text-xs text-[#1a1d2e] hover:bg-[#f4f6fb] transition-colors text-left"
+                      >
+                        <span>{tone.icon}</span> {tone.label}
+                      </button>
+                    ))}
+                  </div>
+                )}
+              </div>
+            </>
           )}
 
-          {/* Post text */}
-          <p className="text-sm text-[#1a1d2e] leading-relaxed line-clamp-2 mb-2">{post.post_text}</p>
-
-          {/* Comment */}
-          <div className="flex items-start gap-1.5 bg-[#f4f6fb] rounded-[8px] px-3 py-2">
-            <span className="text-xs shrink-0 mt-px">💬</span>
-            <p className="text-xs text-[#5f647e] line-clamp-1">{post.comment_text}</p>
-          </div>
-
-          {/* Error */}
-          {post.error_message && (
-            <p className="text-[11px] text-red-500 mt-2 bg-red-50 rounded-[6px] px-2.5 py-1.5">
-              {post.error_message}
-            </p>
-          )}
-
-          {/* FB Post ID */}
-          {post.fb_post_id && (
-            <p className="text-[11px] text-emerald-600 mt-1.5 font-medium">
-              ✓ Post-ID: {post.fb_post_id}
-            </p>
+          {/* Loading spinner */}
+          {aiLoading && (
+            <div className="ml-auto flex items-center gap-1.5 text-xs text-[#1877f2]">
+              <div className="w-3 h-3 border-2 border-[#1877f2] border-t-transparent rounded-full animate-spin" />
+              <span>AI denkt…</span>
+            </div>
           )}
         </div>
 
-        {/* Actions */}
-        <div className="flex flex-col gap-2 shrink-0">
+        {/* Generate prompt row */}
+        {showPrompt && !aiLoading && (
+          <div className="flex items-center gap-2 px-3 pb-2.5 pt-1 bg-[#f9fafb] border-t border-[#eef0f7]">
+            <input
+              ref={promptRef}
+              value={promptText}
+              onChange={(e) => setPromptText(e.target.value)}
+              onKeyDown={(e) => { if (e.key === 'Enter') handleGenerate(); if (e.key === 'Escape') setShowPrompt(false) }}
+              placeholder={fieldType === 'comment'
+                ? 'z.B. Einladender Kommentar der zum Mitmachen motiviert…'
+                : 'z.B. Willkommenspost für neue Mitglieder, motivierend…'}
+              className="flex-1 px-3 py-1.5 text-xs border border-[#e2e5f0] rounded-[6px] focus:outline-none focus:border-[#1877f2] bg-white"
+            />
+            <button
+              type="button"
+              onClick={handleGenerate}
+              disabled={!promptText.trim()}
+              className="px-3 py-1.5 bg-[#1877f2] hover:bg-[#1565c0] text-white rounded-[6px] text-xs font-semibold disabled:opacity-40 transition-colors shrink-0"
+            >
+              Generieren
+            </button>
+            <button type="button" onClick={() => setShowPrompt(false)} className="text-[#c4c7d6] hover:text-[#9196b0] text-sm leading-none">✕</button>
+          </div>
+        )}
+      </div>
+
+      {/* AI Error */}
+      {aiError && (
+        <div className="flex items-center gap-2 px-3 py-2 bg-red-50 border border-red-200 rounded-[8px]">
+          <span className="text-xs text-red-600 flex-1">{aiError}</span>
+          <button type="button" onClick={() => setAiError(null)} className="text-red-400 hover:text-red-600 text-xs">✕</button>
+        </div>
+      )}
+
+      {/* AI Result Preview */}
+      {aiResult && (
+        <div className="border border-[#c2d9ff] rounded-[12px] overflow-hidden bg-gradient-to-b from-[#f0f7ff] to-white">
+          <div className="px-4 py-2.5 bg-[#f0f7ff] border-b border-[#c2d9ff] flex items-center gap-2">
+            <span>✨</span>
+            <span className="text-xs font-bold text-[#1877f2]">AI Vorschlag</span>
+          </div>
+          <div className="px-4 py-3">
+            <p className="text-sm text-[#1a1d2e] leading-relaxed whitespace-pre-wrap">{aiResult}</p>
+          </div>
+          <div className="px-4 py-3 border-t border-[#e8efff] flex items-center gap-2">
+            <button
+              type="button"
+              onClick={handleAccept}
+              className="flex-1 py-2 bg-[#1877f2] hover:bg-[#1565c0] text-white rounded-[8px] text-xs font-semibold transition-colors"
+            >
+              Übernehmen
+            </button>
+            <button
+              type="button"
+              onClick={() => setAiResult(null)}
+              className="px-3 py-2 border border-[#e2e5f0] text-[#9196b0] rounded-[8px] text-xs hover:bg-red-50 hover:text-red-500 hover:border-red-200 transition-colors"
+            >
+              ✕
+            </button>
+          </div>
+        </div>
+      )}
+    </div>
+  )
+}
+
+function ToolbarBtn({ children, onClick, disabled, active }) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      disabled={disabled}
+      className={`inline-flex items-center gap-1 px-2.5 py-1.5 rounded-[6px] text-[11px] font-medium transition-all disabled:opacity-40 ${
+        active
+          ? 'bg-[#1877f2] text-white shadow-sm'
+          : 'text-[#9196b0] hover:bg-white hover:text-[#1877f2] hover:shadow-sm'
+      }`}
+    >
+      {children}
+    </button>
+  )
+}
+
+// ─── Posts Table ──────────────────────────────────────────────────────────────
+
+function PostsTable({ posts, runningId, onRun, onDelete }) {
+  return (
+    <div className="bg-white border border-[#e2e5f0] rounded-[14px] overflow-hidden shadow-sm">
+      <div className="px-5 py-3.5 border-b border-[#e2e5f0] bg-[#f9fafb] flex items-center gap-2">
+        <span className="text-[11px] font-bold text-[#9196b0] uppercase tracking-wide">
+          {posts.length} {posts.length === 1 ? 'Eintrag' : 'Einträge'}
+        </span>
+      </div>
+      <div className="overflow-x-auto">
+        <table className="w-full text-sm">
+          <thead>
+            <tr className="border-b border-[#f0f0f5]">
+              <th className="text-left px-5 py-3 text-[10px] font-bold text-[#9196b0] uppercase tracking-wide">Status</th>
+              <th className="text-left px-5 py-3 text-[10px] font-bold text-[#9196b0] uppercase tracking-wide">Gruppe</th>
+              <th className="text-left px-5 py-3 text-[10px] font-bold text-[#9196b0] uppercase tracking-wide">Post-Text</th>
+              <th className="text-left px-5 py-3 text-[10px] font-bold text-[#9196b0] uppercase tracking-wide">Kommentar</th>
+              <th className="text-left px-5 py-3 text-[10px] font-bold text-[#9196b0] uppercase tracking-wide">Erstellt</th>
+              <th className="text-right px-5 py-3 text-[10px] font-bold text-[#9196b0] uppercase tracking-wide">Aktionen</th>
+            </tr>
+          </thead>
+          <tbody className="divide-y divide-[#f7f7fb]">
+            {posts.map(post => (
+              <PostRow
+                key={post.id}
+                post={post}
+                isRunning={runningId === post.id}
+                onRun={() => onRun(post)}
+                onDelete={() => onDelete(post.id)}
+              />
+            ))}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  )
+}
+
+function PostRow({ post, isRunning, onRun, onDelete }) {
+  const canRun = post.status === 'pending' || post.status === 'error'
+  const s = STATUS[post.status] || STATUS.pending
+
+  return (
+    <tr className="hover:bg-[#fafbff] transition-colors">
+      <td className="px-5 py-3.5 align-top">
+        <span className={`inline-flex items-center gap-1.5 text-[11px] px-2.5 py-1 rounded-full font-semibold whitespace-nowrap ${s.color}`}>
+          <span className={`w-1.5 h-1.5 rounded-full shrink-0 ${s.dot}`} />
+          {s.label}
+        </span>
+        {post.fb_post_id && (
+          <div className="text-[10px] text-emerald-600 font-medium mt-1">✓ ID: {post.fb_post_id}</div>
+        )}
+      </td>
+      <td className="px-5 py-3.5 align-top">
+        <div className="text-sm font-medium text-[#1a1d2e] max-w-[130px] truncate">
+          {post.group_name || `Gruppe ${post.group_id}`}
+        </div>
+        {post.scheduled_at && (
+          <div className="text-[11px] text-[#9196b0] mt-0.5">
+            🕐 {new Date(post.scheduled_at).toLocaleString('de-DE', { dateStyle: 'short', timeStyle: 'short' })}
+          </div>
+        )}
+      </td>
+      <td className="px-5 py-3.5 align-top max-w-[220px]">
+        <div className="flex items-start gap-2">
+          {post.image_url && (
+            <img src={post.image_url} alt="" className="w-9 h-9 rounded-[6px] object-cover shrink-0 border border-[#e2e5f0]" />
+          )}
+          <p className="text-sm text-[#5f647e] line-clamp-2 leading-relaxed">{post.post_text}</p>
+        </div>
+        {post.error_message && (
+          <p className="text-[10px] text-red-500 mt-1.5 bg-red-50 rounded-[5px] px-2 py-1 line-clamp-1">
+            {post.error_message}
+          </p>
+        )}
+      </td>
+      <td className="px-5 py-3.5 align-top max-w-[180px]">
+        <p className="text-xs text-[#9196b0] line-clamp-2 leading-relaxed">💬 {post.comment_text}</p>
+      </td>
+      <td className="px-5 py-3.5 align-top whitespace-nowrap">
+        <span className="text-xs text-[#9196b0]">
+          {new Date(post.created_at).toLocaleDateString('de-DE')}
+        </span>
+      </td>
+      <td className="px-5 py-3.5 align-top">
+        <div className="flex items-center gap-2 justify-end">
           {canRun && (
-            <button onClick={onRun} disabled={isRunning}
-              className="flex items-center gap-1.5 px-3.5 py-2 bg-primary hover:bg-primary-hover text-white rounded-[8px] text-xs font-semibold transition-colors disabled:opacity-50 whitespace-nowrap">
+            <button
+              onClick={onRun}
+              disabled={isRunning}
+              className="flex items-center gap-1.5 px-3 py-1.5 bg-primary hover:bg-primary-hover text-white rounded-[7px] text-xs font-semibold transition-colors disabled:opacity-50 whitespace-nowrap"
+            >
               {isRunning
-                ? <><span className="w-3 h-3 border-2 border-white border-t-transparent rounded-full animate-spin" />Läuft…</>
+                ? <span className="w-3 h-3 border-2 border-white border-t-transparent rounded-full animate-spin" />
                 : <>▶ Starten</>}
             </button>
           )}
-          <button onClick={onDelete} disabled={isRunning}
-            className="px-3.5 py-2 border border-[#e2e5f0] text-[#9196b0] rounded-[8px] text-xs hover:bg-red-50 hover:border-red-200 hover:text-red-500 transition-colors disabled:opacity-50">
-            Löschen
+          <button
+            onClick={onDelete}
+            disabled={isRunning}
+            className="p-1.5 text-[#c4c7d6] hover:text-red-500 rounded-[6px] hover:bg-red-50 transition-colors disabled:opacity-40"
+            title="Löschen"
+          >
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14H6L5 6"/><path d="M10 11v6"/><path d="M14 11v6"/><path d="M9 6V4h6v2"/></svg>
           </button>
         </div>
+      </td>
+    </tr>
+  )
+}
+
+// ─── Empty State ──────────────────────────────────────────────────────────────
+
+function EmptyState({ onNew }) {
+  return (
+    <div className="bg-white border border-[#e2e5f0] rounded-[14px] shadow-sm p-16 text-center">
+      <div className="w-16 h-16 rounded-2xl bg-gradient-to-br from-[#1877f2]/8 to-[#42a5f5]/8 flex items-center justify-center text-3xl mx-auto mb-4">
+        📅
       </div>
+      <h3 className="font-bold text-[#1a1d2e] mb-2">Noch keine geplanten Posts</h3>
+      <p className="text-sm text-[#9196b0] mb-6 max-w-xs mx-auto leading-relaxed">
+        Erstelle deinen ersten Post mit automatischem Kommentar für eine Facebook-Gruppe.
+      </p>
+      <button
+        onClick={onNew}
+        className="inline-flex items-center gap-2 px-5 py-2.5 bg-primary hover:bg-primary-hover text-white rounded-[10px] text-sm font-semibold transition-colors shadow-sm shadow-[#1877f2]/15"
+      >
+        <span className="text-base font-light">+</span> Ersten Post erstellen
+      </button>
     </div>
   )
 }
