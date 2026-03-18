@@ -3,6 +3,7 @@ import { supabase } from '../lib/supabase'
 import PageHeader from '../components/PageHeader'
 import { t } from '../lib/i18n'
 import { useExtension } from '../hooks/useExtension'
+import AiTextAssist from '../components/AiTextAssist'
 
 const SUPABASE_URL = 'https://rzwfhokwmuuypvrrhfjq.supabase.co'
 
@@ -266,14 +267,30 @@ export default function ScheduledPosts() {
             </div>
 
             <div className="space-y-1">
-              <label className="text-xs font-semibold text-[#5f647e]">Post-Text *</label>
+              <div className="flex items-center justify-between">
+                <label className="text-xs font-semibold text-[#5f647e]">Post-Text *</label>
+                <AiTextAssist
+                  value={form.post_text}
+                  onAccept={(text) => setForm(prev => ({ ...prev, post_text: text }))}
+                  fieldType="post"
+                  context={form.group_name || form.group_id}
+                />
+              </div>
               <textarea value={form.post_text} onChange={f('post_text')}
                 rows={4} placeholder="Dein Beitrags-Text…"
                 className="w-full px-3 py-2 text-sm border border-[#e2e5f0] rounded-[8px] focus:outline-none focus:border-primary bg-[#f9fafb] resize-none" />
             </div>
 
             <div className="space-y-1">
-              <label className="text-xs font-semibold text-[#5f647e]">Kommentar-Text * <span className="font-normal text-[#9196b0]">(wird automatisch nach dem Post gepostet)</span></label>
+              <div className="flex items-center justify-between">
+                <label className="text-xs font-semibold text-[#5f647e]">Kommentar-Text * <span className="font-normal text-[#9196b0]">(wird automatisch nach dem Post gepostet)</span></label>
+                <AiTextAssist
+                  value={form.comment_text}
+                  onAccept={(text) => setForm(prev => ({ ...prev, comment_text: text }))}
+                  fieldType="comment"
+                  context={form.post_text}
+                />
+              </div>
               <textarea value={form.comment_text} onChange={f('comment_text')}
                 rows={3} placeholder="Kommentar der automatisch gepostet wird…"
                 className="w-full px-3 py-2 text-sm border border-[#e2e5f0] rounded-[8px] focus:outline-none focus:border-primary bg-[#f9fafb] resize-none" />
