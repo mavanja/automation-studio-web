@@ -43,7 +43,7 @@ const STEPS = [
 
 const EMPTY = {
   group_id: '', group_name: '', post_text: '',
-  comment_text: '', image_url: '', post_color: 'white', scheduled_at: '', link_url: '',
+  comment_text: '', image_url: '', post_color: 'white', scheduled_at: '', link_url: '', link_title: '',
 }
 
 // Convert UTC ISO string → local datetime-local input value (YYYY-MM-DDTHH:mm)
@@ -177,6 +177,7 @@ export default function ScheduledPosts() {
         post_color:   form.post_color,
         scheduled_at: form.scheduled_at ? new Date(form.scheduled_at).toISOString() : null,
         link_url:     form.link_url.trim() || null,
+        link_title:   form.link_title.trim() || null,
       }
       let err
       if (editingId) {
@@ -271,6 +272,7 @@ export default function ScheduledPosts() {
       post_color:   post.post_color || 'white',
       scheduled_at: toLocalDatetimeInput(post.scheduled_at),
       link_url:     post.link_url || '',
+      link_title:   post.link_title || '',
     })
     setImageFile(null)
     setImagePreview(post.image_url || null)
@@ -812,6 +814,20 @@ function WizardStep4({ form, onChange }) {
         />
         <p className="text-[11px] text-[#9196b0]">Wenn angegeben: Klick auf das Bild im Facebook-Post leitet zu dieser URL weiter</p>
       </div>
+
+      {form.link_url && (
+        <div className="space-y-1.5">
+          <label className="text-[11px] font-bold text-[#5f647e] uppercase tracking-wide">Link-Titel (optional)</label>
+          <input
+            value={form.link_title}
+            onChange={onChange('link_title')}
+            type="text"
+            placeholder="z.B. Knips deine energetischen Fähigkeiten an"
+            className="w-full px-4 py-3 text-sm border border-[#e2e5f0] rounded-[10px] focus:outline-none focus:border-primary bg-white"
+          />
+          <p className="text-[11px] text-[#9196b0]">Wird unter dem Bild in Facebook angezeigt. Leer = erster Satz des Post-Textes</p>
+        </div>
+      )}
 
       <div className="bg-[#f9fafb] border border-[#e2e5f0] rounded-[12px] p-4 space-y-3">
         <p className="text-[11px] font-bold text-[#9196b0] uppercase tracking-wide">Zusammenfassung</p>
