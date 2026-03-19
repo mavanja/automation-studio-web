@@ -4,6 +4,7 @@ import { supabase } from '../lib/supabase'
 import PageHeader from '../components/PageHeader'
 import { t } from '../lib/i18n'
 import { useRealtimeTable } from '../hooks/useRealtimeTable'
+import { useLeadsCoordinator } from '../hooks/useLeadsCoordinator'
 
 const TASK_TYPES = [
   { group: 'Lead Generation', options: [
@@ -47,6 +48,33 @@ export default function Tasks() {
   const [saving, setSaving] = useState(false)
   const [groupPosts, setGroupPosts] = useState([])
   const [fetchingPosts, setFetchingPosts] = useState(false)
+  const [leadsStatus, setLeadsStatus] = useState(null)
+
+  // Leads coordinator — handles per-user profile visits like old YunaPRO web app
+  useLeadsCoordinator({
+    onProgress: (info) => {
+      if (info.type === 'userList') {
+        setLeadsStatus(`${info.total} Leads gefunden. Starte Profil-Besuche...`)
+      } else if (info.type === 'profileScan') {
+        const name = info.result?.name || 'User'
+        const sent = info.result?.isFriendRequestSent ? 'gesendet' : 'übersprungen'
+        setLeadsStatus(`${name}: Anfrage ${sent} (${info.sentCount} gesendet)`)
+      }
+      loadTasks()
+    },
+    onComplete: (sentCount) => {
+      setLeadsStatus(`Fertig! ${sentCount} Freundschaftsanfragen gesendet.`)
+      loadTasks()
+    },
+    onError: (msg) => {
+      setLeadsStatus(`Fehler: ${msg}`)
+      loadTasks()
+    },
+    onBlocked: (msg) => {
+      setLeadsStatus(`Blockiert: ${msg}`)
+      loadTasks()
+    },
+  })
 
   useEffect(() => { loadTasks() }, [])
 
