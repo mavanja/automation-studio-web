@@ -76,13 +76,45 @@ export default function Tasks() {
     setGroups(data || [])
   }
 
-  function refreshGroups() {
+  const [refreshing, setRefreshing] = useState(false)
+  async function refreshGroups() {
+    setRefreshing(true)
     const EXT_ID = 'ehaendpolcffilhljadohefkgaaplfbg'
-    if (typeof chrome !== 'undefined' && chrome?.runtime?.sendMessage) {
-      chrome.runtime.sendMessage(EXT_ID, { type: 'FETCH_MANAGED_GROUPS' }, async () => {
-        await new Promise(r => setTimeout(r, 3000))
-        loadGroups()
-      })
+    try {
+      if (typeof chrome !== 'undefined' && chrome?.runtime?.sendMessage) {
+        chrome.runtime.sendMessage(EXT_ID, { type: 'FETCH_MANAGED_GROUPS' }, async (response) => {
+          console.log('[AS Web] FETCH_MANAGED_GROUPS response:', response)
+          if (response?.groups?.length) {
+            const { data: { user } } = await supabase.auth.getUser()
+            if (user) {
+              await supabase.from('fb_groups').delete().eq('user_id', user.id)
+              const rows = response.groups.map(g => ({
+                user_id: user.id,
+                group_id: g.groupId,
+                group_name: g.groupName,
+                member_count: g.memberCount || 0,
+                is_admin: g.isAdmin || false,
+                group_url: g.url || 'https://www.facebook.com/groups/' + g.groupId,
+              }))
+              await supabase.from('fb_groups').insert(rows)
+              console.log('[AS Web] Saved', rows.length, 'groups')
+            }
+          } else if (response?.error) {
+            console.error('[AS Web] Extension error:', response.error)
+            alert('Fehler: ' + (response.error === 'NO_FB_TAB' ? 'Bitte öffne einen Facebook-Tab' : response.error))
+          }
+          await loadGroups()
+          setRefreshing(false)
+        })
+        // Timeout fallback
+        setTimeout(() => setRefreshing(false), 30000)
+      } else {
+        alert('Extension nicht erreichbar. Bitte prüfe ob die Extension installiert ist und ein Facebook-Tab offen ist.')
+        setRefreshing(false)
+      }
+    } catch (e) {
+      console.error('[AS Web] refreshGroups error:', e)
+      setRefreshing(false)
     }
   }
 
@@ -441,10 +473,10 @@ export default function Tasks() {
                     {isGroupTask ? t('assistant.select_group') : t('tasks.fb_url')}
                   </label>
                   {isGroupTask && (
-                    <button type="button" onClick={refreshGroups}
-                      className="px-2.5 py-1 text-[10px] font-semibold bg-primary text-white rounded-lg hover:bg-primary-hover transition-colors flex items-center gap-1">
-                      <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round"><polyline points="23 4 23 10 17 10"/><path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"/></svg>
-                      {t('assistant.refresh')}
+                    <button type="button" onClick={refreshGroups} disabled={refreshing}
+                      className="px-2.5 py-1 text-[10px] font-semibold bg-primary text-white rounded-lg hover:bg-primary-hover transition-colors flex items-center gap-1 disabled:opacity-50">
+                      <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" className={refreshing ? 'animate-spin' : ''}><polyline points="23 4 23 10 17 10"/><path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"/></svg>
+                      {refreshing ? 'Laden...' : t('assistant.refresh')}
                     </button>
                   )}
                 </div>
